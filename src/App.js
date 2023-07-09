@@ -45,12 +45,36 @@ import {
     hash_transaction,
     hash_script_data,
     hash_plutus_data,
-    ScriptDataHash, Ed25519KeyHash, NativeScript, StakeCredential
+    ScriptDataHash, 
+    Ed25519KeyHash, 
+    NativeScript, 
+    StakeCredential,
+    GeneralTransactionMetadata,
+    MetadataMap,
+    TransactionMetadata,
+    TransactionMetadatum,
+    MetadataList,
+    AuxiliaryData,
+    encode_json_str_to_metadatum,
+    MetadataJsonSchema,
+    TransactionMetadatumLabels,
+    DataHash,
+    AuxiliaryDataHash,
+    Certificate,
+    StakeDelegation,
+    PublicKey,
+    StakeRegistration,
+    Certificates,
+    TransactionWitnessSets,
+    StakeDeregistration,
+
 } from "@emurgo/cardano-serialization-lib-asmjs"
 import "./App.css";
 import {blake2b} from "blakejs";
+import { toBePartiallyChecked, toContainElement } from '@testing-library/jest-dom/dist/matchers';
 let Buffer = require('buffer/').Buffer
 let blake = require('blakejs')
+let { bech32, bech32m } = require('bech32')
 
 
 export default class App extends React.Component
@@ -82,7 +106,7 @@ export default class App extends React.Component
             txBodyCborHex_signed: "",
             submittedTxHash: "",
 
-            addressBech32SendADA: "addr_test1qrt7j04dtk4hfjq036r2nfewt59q8zpa69ax88utyr6es2ar72l7vd6evxct69wcje5cs25ze4qeshejy828h30zkydsu4yrmm",
+            addressBech32SendADA: "addr_test1qrptpa3yfhva8ndvmnfyjl3a49jhhc8apwlz9u8cvm6nmx0lcqjhrza2krhyeuj8wphyrxhzt5l3hczqqmfdsg2du0ksplt2py",
             lovelaceToSend: 3000000,
             assetNameHex: "4c494645",
             assetPolicyIdHex: "ae02017105527c6c0c9840397a39cc5ca39fabe5b9998ba70fda5f2f",
@@ -94,6 +118,36 @@ export default class App extends React.Component
             transactionIndxLocked: 0,
             lovelaceLocked: 3000000,
             manualFee: 900000,
+
+            // CIP-95 Stuff
+            selected95TabId: "1",
+            selectedCIP95: false,
+
+            dRepKey: undefined,
+            stakeKey: undefined,
+            dRepID: undefined,
+            dRepIDBech32: undefined,
+            cip95ResultTx: "",
+            cip95ResultHash: "",
+            cip95ResultWitness: "",
+            cip95MetadataURL: undefined,
+            cip95MetadataHash: undefined,
+            cip95MetadatumLabel: BigNum.from_str("3921"),
+
+            // vote delegation
+            voteDelegationTarget: "abstain",
+        
+            // DRep Retirement
+            dRepRetirementEpoch : undefined,
+
+            // vote
+            voteGovActionID: "gov_action...hd74s",
+            voteChoice: undefined,
+
+            // governance action
+            govActionDeposit: 100,
+            govActionHash: "b4e4184bfedf920fec53cdc327de4da661ae427784c0ccca9e3c2f50",
+            govActionType: undefined,
 
         }
 
@@ -168,12 +222,6 @@ export default class App extends React.Component
     }
 
     /**
-     * Handles the tab selection on the user form
-     * @param tabId
-     */
-    handleTabId = (tabId) => this.setState({selectedTabId: tabId})
-
-    /**
      * Handles the radio buttons on the form that
      * let the user choose which wallet to work with
      * @param obj
@@ -184,39 +232,6 @@ export default class App extends React.Component
             () => {
                 this.refreshData()
             })
-    }
-
-    /**
-     * Generate address from the plutus contract cborhex
-     */
-    generateScriptAddress = () => {
-        // cborhex of the alwayssucceeds.plutus
-        // const cborhex = "4e4d01000033222220051200120011";
-        // const cbor = Buffer.from(cborhex, "hex");
-        // const blake2bhash = blake.blake2b(cbor, 0, 28);
-
-        const script = PlutusScript.from_bytes(Buffer.from(this.state.plutusScriptCborHex, "hex"))
-        // const blake2bhash = blake.blake2b(script.to_bytes(), 0, 28);
-        const blake2bhash = "67f33146617a5e61936081db3b2117cbf59bd2123748f58ac9678656";
-        const scripthash = ScriptHash.from_bytes(Buffer.from(blake2bhash,"hex"));
-
-        const cred = StakeCredential.from_scripthash(scripthash);
-        const networkId = NetworkInfo.testnet().network_id();
-        const baseAddr = EnterpriseAddress.new(networkId, cred);
-        const addr = baseAddr.to_address();
-        const addrBech32 = addr.to_bech32();
-
-        // hash of the address generated from script
-        console.log(Buffer.from(addr.to_bytes(), "utf8").toString("hex"))
-
-        // hash of the address generated using cardano-cli
-        const ScriptAddress = Address.from_bech32("addr_test1wpnlxv2xv9a9ucvnvzqakwepzl9ltx7jzgm53av2e9ncv4sysemm8");
-        console.log(Buffer.from(ScriptAddress.to_bytes(), "utf8").toString("hex"))
-
-
-        console.log(ScriptAddress.to_bech32())
-        console.log(addrBech32)
-
     }
 
     /**
@@ -484,27 +499,35 @@ export default class App extends React.Component
         }
     }
 
+    checkIfCIP95MethodsAvailable = async () => {
+        const hasCIP95Methods =( this.API.hasOwnProperty('getPubDRepKey') && this.API.hasOwnProperty('getActivePubStakeKeys'));
+        console.log(`Has CIP95 .getPubDRepKey() and .getActivePubStakeKeys: ${hasCIP95Methods}`)
+        return hasCIP95Methods;
+    }
     /**
      * Refresh all the data from the user's wallet
      * @returns {Promise<void>}
      */
     refreshData = async () => {
-        this.generateScriptAddress()
 
         try{
             const walletFound = this.checkIfWalletFound();
-            if (walletFound) {
+
+            if (walletFound && this.state.selectedCIP95) {
                 await this.getAPIVersion();
                 await this.getWalletName();
-                const walletEnabled = await this.enableWallet();
-                if (walletEnabled) {
+                const walletEnabled = await this.enableCIP95Wallet();
+                const hasCIP95Methods = await this.checkIfCIP95MethodsAvailable();
+
+                if (walletEnabled && hasCIP95Methods) {
                     await this.getNetworkId();
                     await this.getUtxos();
-                    await this.getCollateral();
                     await this.getBalance();
                     await this.getChangeAddress();
                     await this.getRewardAddresses();
                     await this.getUsedAddresses();
+                    await this.getPubDRepKey();
+                    await this.getActivePubStakeKeys();
                 } else {
                     await this.setState({
                         Utxos: null,
@@ -518,8 +541,51 @@ export default class App extends React.Component
                         txBodyCborHex_unsigned: "",
                         txBodyCborHex_signed: "",
                         submittedTxHash: "",
+
+                        dRepKey: "",
+                        stakeKey: "",
+                        dRepID: "",
+                        dRepIDBech32: "",
+                        cip95ResultTx: "",
+                        cip95ResultHash: "",
+                        cip95ResultWitness: "",
                     });
                 }
+            } else if (walletFound) {
+                    await this.getAPIVersion();
+                    await this.getWalletName();
+                    const walletEnabled = await this.enableWallet();
+                    if (walletEnabled) {
+                        await this.getNetworkId();
+                        await this.getUtxos();
+                        // await this.getCollateral();
+                        await this.getBalance();
+                        await this.getChangeAddress();
+                        await this.getRewardAddresses();
+                        await this.getUsedAddresses();
+                    } else {
+                        await this.setState({
+                            Utxos: null,
+                            CollatUtxos: null,
+                            balance: null,
+                            changeAddress: null,
+                            rewardAddress: null,
+                            usedAddress: null,
+    
+                            txBody: null,
+                            txBodyCborHex_unsigned: "",
+                            txBodyCborHex_signed: "",
+                            submittedTxHash: "",
+    
+                            dRepKey: "",
+                            stakeKey: "",
+                            dRepID: "",
+                            dRepIDBech32: "",
+                            cip95ResultTx: "",
+                            cip95ResultHash: "",
+                            cip95ResultWitness: "",
+                        });
+                    }
             } else {
                 await this.setState({
                     walletIsEnabled: false,
@@ -535,6 +601,14 @@ export default class App extends React.Component
                     txBodyCborHex_unsigned: "",
                     txBodyCborHex_signed: "",
                     submittedTxHash: "",
+
+                    dRepKey: "",
+                    stakeKey: "",
+                    dRepID: "",
+                    dRepIDBech32: "",
+                    cip95ResultTx: "",
+                    cip95ResultHash: "",
+                    cip95ResultWitness: "",
                 });
             }
         } catch (err) {
@@ -564,7 +638,6 @@ export default class App extends React.Component
 
         return txBuilder
     }
-
     /**
      * Builds an object with all the UTXOs from the user's wallet
      * @returns {Promise<TransactionUnspentOutputs>}
@@ -577,29 +650,90 @@ export default class App extends React.Component
         return txOutputs
     }
 
-    /**
-     * The transaction is build in 3 stages:
-     * 1 - initialize the Transaction Builder
-     * 2 - Add inputs and outputs
-     * 3 - Calculate the fee and how much change needs to be given
-     * 4 - Build the transaction body
-     * 5 - Sign it (at this point the user will be prompted for
-     * a password in his wallet)
-     * 6 - Send the transaction
-     * @returns {Promise<void>}
-     */
-    buildSendADATransaction = async () => {
+    // CIP-95 Parts
+    getPubDRepKey = async () => {
+        try {
+            // From wallet get pub DRep key 
+            const raw = await this.API.getPubDRepKey();
+            const dRepKey = raw;
+            console.log("DRep Key: ", dRepKey);
+            this.setState({dRepKey});
+            
+            // From wallet's DRep key hash to get DRep ID 
+            const dRepKeyBytes = Buffer.from(dRepKey, "hex");
+            const dRepID = blake.blake2bHex(dRepKeyBytes, null, 28);
+            console.log("DRep ID Hex: ", dRepID);
+            this.setState({dRepID});
+            // into bech32
+            const words = bech32.toWords(Buffer.from(dRepID, "hex"));
+            const dRepIDBech32 = bech32.encode('drep_id', words);
+            console.log("DRep ID Bech: ", dRepIDBech32);
+            this.setState({dRepIDBech32});
+
+        } catch (err) {
+            console.log(err)
+        }
+    }
+
+    getActivePubStakeKeys = async () => {
+        try {
+            const raw = await this.API.getActivePubStakeKeys();
+            const rawFirst = raw[0];
+            const stakeKey = rawFirst;
+            this.setState({stakeKey})
+        } catch (err) {
+            console.log(err)
+        }
+    }
+
+    enableCIP95Wallet = async () => {
+        const walletKey = this.state.whichWalletSelected;
+        try {
+            this.API = await window.cardano[walletKey].enable({"cip": 95});
+        } catch(err) {
+            console.log(err);
+        }
+        return this.checkIfWalletEnabled();
+    }
+
+    handleTab95Id = (tabId) => this.setState({selectedTab95Id: tabId})
+
+    handleCIP95Select = () => {
+        const selectedCIP95 = !this.state.selectedCIP95;
+        console.log("CIP-95 Selected?: ", selectedCIP95);
+        this.setState({selectedCIP95});
+    }
+
+    buildSubmitMetadataTx = async (txMetadata) => {
 
         const txBuilder = await this.initTransactionBuilder();
-        const shelleyOutputAddress = Address.from_bech32(this.state.addressBech32SendADA);
+        // Send Tx to own address
+        const shelleyOutputAddress = Address.from_bech32(this.state.usedAddress);
         const shelleyChangeAddress = Address.from_bech32(this.state.changeAddress);
-
+        
         txBuilder.add_output(
             TransactionOutput.new(
                 shelleyOutputAddress,
-                Value.new(BigNum.from_str(this.state.lovelaceToSend.toString()))
+                Value.new(BigNum.from_str("3000000"))
             ),
         );
+
+        // Add ceritificate fields as metadata
+        const obj = txMetadata;
+
+        // add metadata to tx, have to jump through some object data strcture hoops 
+        const metadata = encode_json_str_to_metadatum(JSON.stringify(obj), MetadataJsonSchema.NoConversions);
+        const auxMetadata = AuxiliaryData.new();
+        
+        const transactionMetadata = GeneralTransactionMetadata.new();
+        transactionMetadata.insert(this.state.cip95MetadatumLabel, metadata);
+        auxMetadata.set_metadata(transactionMetadata);
+        
+        const metadatumLabels = TransactionMetadatumLabels.new();
+        metadatumLabels.add(this.state.cip95MetadatumLabel);
+        
+        // add metadata to tx builder for correct fee calculation
+        txBuilder.add_json_metadatum_with_schema(metadatumLabels.get(0), JSON.stringify(obj), MetadataJsonSchema.NoConversions);
 
         // Find the available UTXOs in the wallet and
         // us them as Inputs
@@ -608,542 +742,44 @@ export default class App extends React.Component
 
         // calculate the min fee required and send any change to an address
         txBuilder.add_change_if_needed(shelleyChangeAddress)
+        
+        const stakeKeyHash = (PublicKey.from_bytes(Buffer.from(this.state.stakeKey, 'hex'))).hash();
 
         // once the transaction is ready, we build it to get the tx body without witnesses
         const txBody = txBuilder.build();
 
+        // txBody.required_signers(stakeKeyHash)
 
         // Tx witness
         const transactionWitnessSet = TransactionWitnessSet.new();
-
+          
         const tx = Transaction.new(
             txBody,
-            TransactionWitnessSet.from_bytes(transactionWitnessSet.to_bytes())
-        )
-
-        let txVkeyWitnesses = await this.API.signTx(Buffer.from(tx.to_bytes(), "utf8").toString("hex"), true);
-
-        console.log(txVkeyWitnesses)
-
-        txVkeyWitnesses = TransactionWitnessSet.from_bytes(Buffer.from(txVkeyWitnesses, "hex"));
-
-        transactionWitnessSet.set_vkeys(txVkeyWitnesses.vkeys());
-
-        const signedTx = Transaction.new(
-            tx.body(),
-            transactionWitnessSet
-        );
-
-
-        const submittedTxHash = await this.API.submitTx(Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"));
-        console.log(submittedTxHash)
-        this.setState({submittedTxHash});
-
-
-    }
-
-
-    buildSendTokenTransaction = async () => {
-
-        const txBuilder = await this.initTransactionBuilder();
-        const shelleyOutputAddress = Address.from_bech32(this.state.addressBech32SendADA);
-        const shelleyChangeAddress = Address.from_bech32(this.state.changeAddress);
-
-        let txOutputBuilder = TransactionOutputBuilder.new();
-        txOutputBuilder = txOutputBuilder.with_address(shelleyOutputAddress);
-        txOutputBuilder = txOutputBuilder.next();
-
-        let multiAsset = MultiAsset.new();
-        let assets = Assets.new()
-        assets.insert(
-            AssetName.new(Buffer.from(this.state.assetNameHex, "hex")), // Asset Name
-            BigNum.from_str(this.state.assetAmountToSend.toString()) // How much to send
-        );
-        multiAsset.insert(
-            ScriptHash.from_bytes(Buffer.from(this.state.assetPolicyIdHex, "hex")), // PolicyID
-            assets
-        );
-
-        txOutputBuilder = txOutputBuilder.with_asset_and_min_required_coin(multiAsset, BigNum.from_str(this.protocolParams.coinsPerUtxoWord))
-        const txOutput = txOutputBuilder.build();
-
-        txBuilder.add_output(txOutput)
-
-        // Find the available UTXOs in the wallet and
-        // us them as Inputs
-        const txUnspentOutputs = await this.getTxUnspentOutputs();
-        txBuilder.add_inputs_from(txUnspentOutputs, 3)
-
-
-        // set the time to live - the absolute slot value before the tx becomes invalid
-        // txBuilder.set_ttl(51821456);
-
-        // calculate the min fee required and send any change to an address
-        txBuilder.add_change_if_needed(shelleyChangeAddress)
-
-        // once the transaction is ready, we build it to get the tx body without witnesses
-        const txBody = txBuilder.build();
-
-        // Tx witness
-        const transactionWitnessSet = TransactionWitnessSet.new();
-
-        const tx = Transaction.new(
-            txBody,
-            TransactionWitnessSet.from_bytes(transactionWitnessSet.to_bytes())
+            TransactionWitnessSet.from_bytes(transactionWitnessSet.to_bytes()),
+            auxMetadata,
         )
 
         let txVkeyWitnesses = await this.API.signTx(Buffer.from(tx.to_bytes(), "utf8").toString("hex"), true);
         txVkeyWitnesses = TransactionWitnessSet.from_bytes(Buffer.from(txVkeyWitnesses, "hex"));
-
         transactionWitnessSet.set_vkeys(txVkeyWitnesses.vkeys());
 
         const signedTx = Transaction.new(
             tx.body(),
-            transactionWitnessSet
+            transactionWitnessSet,
+            tx.auxiliary_data(),
         );
 
-        const submittedTxHash = await this.API.submitTx(Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"));
-        console.log(submittedTxHash)
-        this.setState({submittedTxHash});
+        //(signedTx.body()).required_signers(stakeKeyHash);
 
-        // const txBodyCborHex_unsigned = Buffer.from(txBody.to_bytes(), "utf8").toString("hex");
-        // this.setState({txBodyCborHex_unsigned, txBody})
-
+        const result = await this.API.submitVoteDelegation(Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"));
+        console.log(result)
+        const cip95ResultTx = result.tx;
+        const cip95ResultHash = result.txHash;
+        const cip95ResultWitness = result.witness;
+        this.setState({cip95ResultTx});
+        this.setState({cip95ResultHash});
+        this.setState({cip95ResultWitness});
     }
-
-
-
-    buildSendAdaToPlutusScript = async () => {
-
-        const txBuilder = await this.initTransactionBuilder();
-        const ScriptAddress = Address.from_bech32(this.state.addressScriptBech32);
-        const shelleyChangeAddress = Address.from_bech32(this.state.changeAddress)
-
-
-        let txOutputBuilder = TransactionOutputBuilder.new();
-        txOutputBuilder = txOutputBuilder.with_address(ScriptAddress);
-        const dataHash = hash_plutus_data(PlutusData.new_integer(BigInt.from_str(this.state.datumStr)))
-        txOutputBuilder = txOutputBuilder.with_data_hash(dataHash)
-
-        txOutputBuilder = txOutputBuilder.next();
-
-        txOutputBuilder = txOutputBuilder.with_value(Value.new(BigNum.from_str(this.state.lovelaceToSend.toString())))
-        const txOutput = txOutputBuilder.build();
-
-        txBuilder.add_output(txOutput)
-
-        // Find the available UTXOs in the wallet and
-        // us them as Inputs
-        const txUnspentOutputs = await this.getTxUnspentOutputs();
-        txBuilder.add_inputs_from(txUnspentOutputs, 2)
-
-
-        // calculate the min fee required and send any change to an address
-        txBuilder.add_change_if_needed(shelleyChangeAddress)
-
-        // once the transaction is ready, we build it to get the tx body without witnesses
-        const txBody = txBuilder.build();
-
-        // Tx witness
-        const transactionWitnessSet = TransactionWitnessSet.new();
-
-        const tx = Transaction.new(
-            txBody,
-            TransactionWitnessSet.from_bytes(transactionWitnessSet.to_bytes())
-        )
-
-        let txVkeyWitnesses = await this.API.signTx(Buffer.from(tx.to_bytes(), "utf8").toString("hex"), true);
-        txVkeyWitnesses = TransactionWitnessSet.from_bytes(Buffer.from(txVkeyWitnesses, "hex"));
-
-        transactionWitnessSet.set_vkeys(txVkeyWitnesses.vkeys());
-
-        const signedTx = Transaction.new(
-            tx.body(),
-            transactionWitnessSet
-        );
-
-        const submittedTxHash = await this.API.submitTx(Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"));
-        console.log(submittedTxHash)
-        this.setState({submittedTxHash: submittedTxHash, transactionIdLocked: submittedTxHash, lovelaceLocked: this.state.lovelaceToSend});
-
-
-    }
-
-    buildSendTokenToPlutusScript = async () => {
-
-        const txBuilder = await this.initTransactionBuilder();
-        const ScriptAddress = Address.from_bech32(this.state.addressScriptBech32);
-        const shelleyChangeAddress = Address.from_bech32(this.state.changeAddress)
-
-        let txOutputBuilder = TransactionOutputBuilder.new();
-        txOutputBuilder = txOutputBuilder.with_address(ScriptAddress);
-        const dataHash = hash_plutus_data(PlutusData.new_integer(BigInt.from_str(this.state.datumStr)))
-        txOutputBuilder = txOutputBuilder.with_data_hash(dataHash)
-
-        txOutputBuilder = txOutputBuilder.next();
-
-
-
-
-        let multiAsset = MultiAsset.new();
-        let assets = Assets.new()
-        assets.insert(
-            AssetName.new(Buffer.from(this.state.assetNameHex, "hex")), // Asset Name
-            BigNum.from_str(this.state.assetAmountToSend.toString()) // How much to send
-        );
-        multiAsset.insert(
-            ScriptHash.from_bytes(Buffer.from(this.state.assetPolicyIdHex, "hex")), // PolicyID
-            assets
-        );
-
-        // txOutputBuilder = txOutputBuilder.with_asset_and_min_required_coin(multiAsset, BigNum.from_str(this.protocolParams.coinsPerUtxoWord))
-
-        txOutputBuilder = txOutputBuilder.with_coin_and_asset(BigNum.from_str(this.state.lovelaceToSend.toString()),multiAsset)
-
-        const txOutput = txOutputBuilder.build();
-
-        txBuilder.add_output(txOutput)
-
-        // Find the available UTXOs in the wallet and
-        // us them as Inputs
-        const txUnspentOutputs = await this.getTxUnspentOutputs();
-        txBuilder.add_inputs_from(txUnspentOutputs, 3)
-
-
-
-
-
-        // calculate the min fee required and send any change to an address
-        txBuilder.add_change_if_needed(shelleyChangeAddress)
-
-        // once the transaction is ready, we build it to get the tx body without witnesses
-        const txBody = txBuilder.build();
-
-        // Tx witness
-        const transactionWitnessSet = TransactionWitnessSet.new();
-
-        const tx = Transaction.new(
-            txBody,
-            TransactionWitnessSet.from_bytes(transactionWitnessSet.to_bytes())
-        )
-
-        let txVkeyWitnesses = await this.API.signTx(Buffer.from(tx.to_bytes(), "utf8").toString("hex"), true);
-        txVkeyWitnesses = TransactionWitnessSet.from_bytes(Buffer.from(txVkeyWitnesses, "hex"));
-
-        transactionWitnessSet.set_vkeys(txVkeyWitnesses.vkeys());
-
-        const signedTx = Transaction.new(
-            tx.body(),
-            transactionWitnessSet
-        );
-
-        const submittedTxHash = await this.API.submitTx(Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"));
-        console.log(submittedTxHash)
-        this.setState({submittedTxHash: submittedTxHash, transactionIdLocked: submittedTxHash, lovelaceLocked: this.state.lovelaceToSend})
-
-    }
-
-
-
-
-    buildRedeemAdaFromPlutusScript = async () => {
-
-        const txBuilder = await this.initTransactionBuilder();
-        const ScriptAddress = Address.from_bech32(this.state.addressScriptBech32);
-        const shelleyChangeAddress = Address.from_bech32(this.state.changeAddress)
-
-        txBuilder.add_input(
-            ScriptAddress,
-            TransactionInput.new(
-                TransactionHash.from_bytes(Buffer.from(this.state.transactionIdLocked, "hex")),
-                this.state.transactionIndxLocked.toString()),
-            Value.new(BigNum.from_str(this.state.lovelaceLocked.toString()))) // how much lovelace is at that UTXO
-
-        txBuilder.set_fee(BigNum.from_str(Number(this.state.manualFee).toString()))
-
-        const scripts = PlutusScripts.new();
-        scripts.add(PlutusScript.from_bytes(Buffer.from(this.state.plutusScriptCborHex, "hex"))); //from cbor of plutus script
-
-        // Add outputs
-        const outputVal = this.state.lovelaceLocked.toString() - Number(this.state.manualFee)
-        const outputValStr = outputVal.toString();
-        txBuilder.add_output(TransactionOutput.new(shelleyChangeAddress, Value.new(BigNum.from_str(outputValStr))))
-
-
-        // once the transaction is ready, we build it to get the tx body without witnesses
-        const txBody = txBuilder.build();
-
-        const collateral = this.state.CollatUtxos;
-        const inputs = TransactionInputs.new();
-        collateral.forEach((utxo) => {
-            inputs.add(utxo.input());
-        });
-
-        let datums = PlutusList.new();
-        // datums.add(PlutusData.from_bytes(Buffer.from(this.state.datumStr, "utf8")))
-        datums.add(PlutusData.new_integer(BigInt.from_str(this.state.datumStr)))
-
-        const redeemers = Redeemers.new();
-
-        const data = PlutusData.new_constr_plutus_data(
-            ConstrPlutusData.new(
-                BigNum.from_str("0"),
-                PlutusList.new()
-            )
-        );
-
-        const redeemer = Redeemer.new(
-            RedeemerTag.new_spend(),
-            BigNum.from_str("0"),
-            data,
-            ExUnits.new(
-                BigNum.from_str("7000000"),
-                BigNum.from_str("3000000000")
-            )
-        );
-
-        redeemers.add(redeemer)
-
-        // Tx witness
-        const transactionWitnessSet = TransactionWitnessSet.new();
-
-        transactionWitnessSet.set_plutus_scripts(scripts)
-        transactionWitnessSet.set_plutus_data(datums)
-        transactionWitnessSet.set_redeemers(redeemers)
-
-        // Pre Vasil hard fork cost model
-        // const cost_model_vals = [
-        //     197209, 0, 1, 1, 396231, 621, 0, 1, 150000, 1000,
-        //     0, 1, 150000, 32, 2477736, 29175, 4, 29773, 100, 29773, 100, 29773, 100,
-        //     29773, 100, 29773, 100, 29773, 100, 100, 100, 29773, 100, 150000, 32, 150000,
-        //     32, 150000, 32, 150000, 1000, 0, 1, 150000, 32, 150000, 1000, 0, 8, 148000,
-        //     425507, 118, 0, 1, 1, 150000, 1000, 0, 8, 150000, 112536, 247, 1, 150000,
-        //     10000, 1, 136542, 1326, 1, 1000, 150000, 1000, 1, 150000, 32, 150000, 32,
-        //     150000, 32, 1, 1, 150000, 1, 150000, 4, 103599, 248, 1, 103599, 248, 1,
-        //     145276, 1366, 1, 179690, 497, 1, 150000, 32, 150000, 32, 150000, 32, 150000,
-        //     32, 150000, 32, 150000, 32, 148000, 425507, 118, 0, 1, 1, 61516, 11218, 0,
-        //     1, 150000, 32, 148000, 425507, 118, 0, 1, 1, 148000, 425507, 118, 0, 1, 1,
-        //     2477736, 29175, 4, 0, 82363, 4, 150000, 5000, 0, 1, 150000, 32, 197209, 0,
-        //     1, 1, 150000, 32, 150000, 32, 150000, 32, 150000, 32, 150000, 32, 150000, 32,
-        //     150000, 32, 3345831, 1, 1
-        // ];
-
-        /*
-        Post Vasil hard fork cost model
-        If you need to make this code work on the Mainnet, before Vasil hard-fork
-        Then you need to comment this section below and uncomment the cost model above
-        Otherwise it will give errors when redeeming from Scripts
-        Sending assets and ada to Script addresses is unaffected by this cost model
-         */
-        const cost_model_vals = [
-            205665, 812, 1, 1, 1000, 571, 0, 1, 1000, 24177, 4, 1, 1000, 32, 117366,
-            10475, 4, 23000, 100, 23000, 100, 23000, 100, 23000, 100, 23000, 100, 23000,
-            100, 100, 100, 23000, 100, 19537, 32, 175354, 32, 46417, 4, 221973, 511, 0, 1,
-            89141, 32, 497525, 14068, 4, 2, 196500, 453240, 220, 0, 1, 1, 1000, 28662, 4,
-            2, 245000, 216773, 62, 1, 1060367, 12586, 1, 208512, 421, 1, 187000, 1000,
-            52998, 1, 80436, 32, 43249, 32, 1000, 32, 80556, 1, 57667, 4, 1000, 10,
-            197145, 156, 1, 197145, 156, 1, 204924, 473, 1, 208896, 511, 1, 52467, 32,
-            64832, 32, 65493, 32, 22558, 32, 16563, 32, 76511, 32, 196500, 453240, 220, 0,
-            1, 1, 69522, 11687, 0, 1, 60091, 32, 196500, 453240, 220, 0, 1, 1, 196500,
-            453240, 220, 0, 1, 1, 806990, 30482, 4, 1927926, 82523, 4, 265318, 0, 4, 0,
-            85931, 32, 205665, 812, 1, 1, 41182, 32, 212342, 32, 31220, 32, 32696, 32,
-            43357, 32, 32247, 32, 38314, 32, 9462713, 1021, 10,
-        ];
-
-        const costModel = CostModel.new();
-        cost_model_vals.forEach((x, i) => costModel.set(i, Int.new_i32(x)));
-
-
-        const costModels = Costmdls.new();
-        costModels.insert(Language.new_plutus_v1(), costModel);
-
-        const scriptDataHash = hash_script_data(redeemers, costModels, datums);
-        txBody.set_script_data_hash(scriptDataHash);
-
-        txBody.set_collateral(inputs)
-
-
-        const baseAddress = BaseAddress.from_address(shelleyChangeAddress)
-        const requiredSigners = Ed25519KeyHashes.new();
-        requiredSigners.add(baseAddress.payment_cred().to_keyhash())
-
-        txBody.set_required_signers(requiredSigners);
-
-        const tx = Transaction.new(
-            txBody,
-            TransactionWitnessSet.from_bytes(transactionWitnessSet.to_bytes())
-        )
-
-        let txVkeyWitnesses = await this.API.signTx(Buffer.from(tx.to_bytes(), "utf8").toString("hex"), true);
-        txVkeyWitnesses = TransactionWitnessSet.from_bytes(Buffer.from(txVkeyWitnesses, "hex"));
-
-        transactionWitnessSet.set_vkeys(txVkeyWitnesses.vkeys());
-
-        const signedTx = Transaction.new(
-            tx.body(),
-            transactionWitnessSet
-        );
-
-        const submittedTxHash = await this.API.submitTx(Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"));
-        console.log(submittedTxHash)
-        this.setState({submittedTxHash});
-
-    }
-
-    buildRedeemTokenFromPlutusScript = async () => {
-
-        const txBuilder = await this.initTransactionBuilder();
-        const ScriptAddress = Address.from_bech32(this.state.addressScriptBech32);
-        const shelleyChangeAddress = Address.from_bech32(this.state.changeAddress)
-
-        let multiAsset = MultiAsset.new();
-        let assets = Assets.new()
-        assets.insert(
-            AssetName.new(Buffer.from(this.state.assetNameHex, "hex")), // Asset Name
-            BigNum.from_str(this.state.assetAmountToSend.toString()) // How much to send
-        );
-
-        multiAsset.insert(
-            ScriptHash.from_bytes(Buffer.from(this.state.assetPolicyIdHex, "hex")), // PolicyID
-            assets
-        );
-
-        txBuilder.add_input(
-            ScriptAddress,
-            TransactionInput.new(
-                TransactionHash.from_bytes(Buffer.from(this.state.transactionIdLocked, "hex")),
-                this.state.transactionIndxLocked.toString()),
-            Value.new_from_assets(multiAsset)
-        ) // how much lovelace is at that UTXO
-
-
-        txBuilder.set_fee(BigNum.from_str(Number(this.state.manualFee).toString()))
-
-        const scripts = PlutusScripts.new();
-        scripts.add(PlutusScript.from_bytes(Buffer.from(this.state.plutusScriptCborHex, "hex"))); //from cbor of plutus script
-
-
-        // Add outputs
-        const outputVal = this.state.lovelaceLocked.toString() - Number(this.state.manualFee)
-        const outputValStr = outputVal.toString();
-
-        let txOutputBuilder = TransactionOutputBuilder.new();
-        txOutputBuilder = txOutputBuilder.with_address(shelleyChangeAddress);
-        txOutputBuilder = txOutputBuilder.next();
-        txOutputBuilder = txOutputBuilder.with_coin_and_asset(BigNum.from_str(outputValStr),multiAsset)
-
-        const txOutput = txOutputBuilder.build();
-        txBuilder.add_output(txOutput)
-
-
-        // once the transaction is ready, we build it to get the tx body without witnesses
-        const txBody = txBuilder.build();
-
-        const collateral = this.state.CollatUtxos;
-        const inputs = TransactionInputs.new();
-        collateral.forEach((utxo) => {
-            inputs.add(utxo.input());
-        });
-
-
-
-        let datums = PlutusList.new();
-        // datums.add(PlutusData.from_bytes(Buffer.from(this.state.datumStr, "utf8")))
-        datums.add(PlutusData.new_integer(BigInt.from_str(this.state.datumStr)))
-
-        const redeemers = Redeemers.new();
-
-        const data = PlutusData.new_constr_plutus_data(
-            ConstrPlutusData.new(
-                BigNum.from_str("0"),
-                PlutusList.new()
-            )
-        );
-
-        const redeemer = Redeemer.new(
-            RedeemerTag.new_spend(),
-            BigNum.from_str("0"),
-            data,
-            ExUnits.new(
-                BigNum.from_str("7000000"),
-                BigNum.from_str("3000000000")
-            )
-        );
-
-        redeemers.add(redeemer)
-
-        // Tx witness
-        const transactionWitnessSet = TransactionWitnessSet.new();
-
-        transactionWitnessSet.set_plutus_scripts(scripts)
-        transactionWitnessSet.set_plutus_data(datums)
-        transactionWitnessSet.set_redeemers(redeemers)
-
-        // Pre Vasil hard fork cost model
-        // const cost_model_vals = [197209, 0, 1, 1, 396231, 621, 0, 1, 150000, 1000, 0, 1, 150000, 32, 2477736, 29175, 4, 29773, 100, 29773, 100, 29773, 100, 29773, 100, 29773, 100, 29773, 100, 100, 100, 29773, 100, 150000, 32, 150000, 32, 150000, 32, 150000, 1000, 0, 1, 150000, 32, 150000, 1000, 0, 8, 148000, 425507, 118, 0, 1, 1, 150000, 1000, 0, 8, 150000, 112536, 247, 1, 150000, 10000, 1, 136542, 1326, 1, 1000, 150000, 1000, 1, 150000, 32, 150000, 32, 150000, 32, 1, 1, 150000, 1, 150000, 4, 103599, 248, 1, 103599, 248, 1, 145276, 1366, 1, 179690, 497, 1, 150000, 32, 150000, 32, 150000, 32, 150000, 32, 150000, 32, 150000, 32, 148000, 425507, 118, 0, 1, 1, 61516, 11218, 0, 1, 150000, 32, 148000, 425507, 118, 0, 1, 1, 148000, 425507, 118, 0, 1, 1, 2477736, 29175, 4, 0, 82363, 4, 150000, 5000, 0, 1, 150000, 32, 197209, 0, 1, 1, 150000, 32, 150000, 32, 150000, 32, 150000, 32, 150000, 32, 150000, 32, 150000, 32, 3345831, 1, 1];
-
-        /*
-        Post Vasil hard fork cost model
-        If you need to make this code work on the Mainnnet, before Vasil hard-fork
-        Then you need to comment this section below and uncomment the cost model above
-        Otherwise it will give errors when redeeming from Scripts
-        Sending assets and ada to Script addresses is unaffected by this cost model
-         */
-        const cost_model_vals = [
-            205665, 812, 1, 1, 1000, 571, 0, 1, 1000, 24177, 4, 1, 1000, 32, 117366,
-            10475, 4, 23000, 100, 23000, 100, 23000, 100, 23000, 100, 23000, 100, 23000,
-            100, 100, 100, 23000, 100, 19537, 32, 175354, 32, 46417, 4, 221973, 511, 0, 1,
-            89141, 32, 497525, 14068, 4, 2, 196500, 453240, 220, 0, 1, 1, 1000, 28662, 4,
-            2, 245000, 216773, 62, 1, 1060367, 12586, 1, 208512, 421, 1, 187000, 1000,
-            52998, 1, 80436, 32, 43249, 32, 1000, 32, 80556, 1, 57667, 4, 1000, 10,
-            197145, 156, 1, 197145, 156, 1, 204924, 473, 1, 208896, 511, 1, 52467, 32,
-            64832, 32, 65493, 32, 22558, 32, 16563, 32, 76511, 32, 196500, 453240, 220, 0,
-            1, 1, 69522, 11687, 0, 1, 60091, 32, 196500, 453240, 220, 0, 1, 1, 196500,
-            453240, 220, 0, 1, 1, 806990, 30482, 4, 1927926, 82523, 4, 265318, 0, 4, 0,
-            85931, 32, 205665, 812, 1, 1, 41182, 32, 212342, 32, 31220, 32, 32696, 32,
-            43357, 32, 32247, 32, 38314, 32, 9462713, 1021, 10,
-        ];
-
-        const costModel = CostModel.new();
-        cost_model_vals.forEach((x, i) => costModel.set(i, Int.new_i32(x)));
-
-
-        const costModels = Costmdls.new();
-        costModels.insert(Language.new_plutus_v1(), costModel);
-
-        const scriptDataHash = hash_script_data(redeemers, costModels, datums);
-        txBody.set_script_data_hash(scriptDataHash);
-
-        txBody.set_collateral(inputs)
-
-
-        const baseAddress = BaseAddress.from_address(shelleyChangeAddress)
-        const requiredSigners = Ed25519KeyHashes.new();
-        requiredSigners.add(baseAddress.payment_cred().to_keyhash())
-
-        txBody.set_required_signers(requiredSigners);
-
-        const tx = Transaction.new(
-            txBody,
-            TransactionWitnessSet.from_bytes(transactionWitnessSet.to_bytes())
-        )
-
-        let txVkeyWitnesses = await this.API.signTx(Buffer.from(tx.to_bytes(), "utf8").toString("hex"), true);
-        txVkeyWitnesses = TransactionWitnessSet.from_bytes(Buffer.from(txVkeyWitnesses, "hex"));
-
-        transactionWitnessSet.set_vkeys(txVkeyWitnesses.vkeys());
-
-        const signedTx = Transaction.new(
-            tx.body(),
-            transactionWitnessSet
-        );
-
-        const submittedTxHash = await this.API.submitTx(Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"));
-        console.log(submittedTxHash)
-        this.setState({submittedTxHash});
-
-    }
-
 
     async componentDidMount() {
         this.pollWallets();
@@ -1156,9 +792,10 @@ export default class App extends React.Component
         return (
             <div style={{margin: "20px"}}>
 
+                <h1>✨Demos dApp✨</h1>
 
+                <input type="checkbox" onChange={this.handleCIP95Select}/> CIP-95?
 
-                <h1>Boilerplate DApp connector to Wallet</h1>
                 <div style={{paddingTop: "10px"}}>
                     <div style={{marginBottom: 15}}>Select wallet:</div>
                     <RadioGroup
@@ -1179,9 +816,7 @@ export default class App extends React.Component
                     </RadioGroup>
                 </div>
 
-
-
-                <button style={{padding: "20px"}} onClick={this.refreshData}>Refresh</button>
+                <button style={{padding: "20px"}} onClick={this.refreshData}>Refresh</button> 
 
                 <p style={{paddingTop: "20px"}}><span style={{fontWeight: "bold"}}>Wallet Found: </span>{`${this.state.walletFound}`}</p>
                 <p><span style={{fontWeight: "bold"}}>Wallet Connected: </span>{`${this.state.walletIsEnabled}`}</p>
@@ -1189,505 +824,263 @@ export default class App extends React.Component
                 <p><span style={{fontWeight: "bold"}}>Wallet name: </span>{this.state.walletName}</p>
 
                 <p><span style={{fontWeight: "bold"}}>Network Id (0 = testnet; 1 = mainnet): </span>{this.state.networkId}</p>
-                <p style={{paddingTop: "20px"}}><span style={{fontWeight: "bold"}}>UTXOs: (UTXO #txid = ADA amount + AssetAmount + policyId.AssetName + ...): </span>{this.state.Utxos?.map(x => <li style={{fontSize: "10px"}} key={`${x.str}${x.multiAssetStr}`}>{`${x.str}${x.multiAssetStr}`}</li>)}</p>
+                <p style={{paddingTop: "20px"}}><span style={{fontWeight: "bold"}}>UTXOs: </span>{this.state.Utxos?.map(x => <li style={{fontSize: "10px"}} key={`${x.str}${x.multiAssetStr}`}>{`${x.str}${x.multiAssetStr}`}</li>)}</p>
                 <p style={{paddingTop: "20px"}}><span style={{fontWeight: "bold"}}>Balance: </span>{this.state.balance}</p>
                 <p><span style={{fontWeight: "bold"}}>Change Address: </span>{this.state.changeAddress}</p>
                 <p><span style={{fontWeight: "bold"}}>Staking Address: </span>{this.state.rewardAddress}</p>
                 <p><span style={{fontWeight: "bold"}}>Used Address: </span>{this.state.usedAddress}</p>
                 <hr style={{marginTop: "40px", marginBottom: "40px"}}/>
+                <h1>CIP-95 🤠</h1>
+                <p><span style={{fontWeight: "bold"}}> .getPubDRepKey(): </span>{this.state.dRepKey}</p>
+                <p><span style={{fontWeight: "lighter"}}>Hex DRep ID (Key digest): </span>{this.state.dRepID}</p>
+                <p><span style={{fontWeight: "lighter"}}>Bech32 DRep ID (Key digest): </span>{this.state.dRepIDBech32}</p>
+                <p><span style={{fontWeight: "bold"}}>.getActivePubStakeKeys(): </span>{this.state.stakeKey}</p>
 
-                <Tabs id="TabsExample" vertical={true} onChange={this.handleTabId} selectedTabId={this.state.selectedTabId}>
-                    <Tab id="1" title="1. Send ADA to Address" panel={
+
+                <Tabs id="cip95" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95TabId}>
+                    <Tab id="1" title="1. Submit Vote Delegation 🦸‍♀️" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
-                                helperText="insert an address where you want to send some ADA ..."
-                                label="Address where to send ADA"
+                                helperText="insert target of delegation: drep_id...qerpc69 | abstain | no confidence"
+                                label="Target of Vote Delegation"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({addressBech32SendADA: event.target.value})}
-                                    value={this.state.addressBech32SendADA}
+                                    onChange={(event) => this.setState({voteDelegationTarget: event.target.value})}
+                                    value={this.state.voteDelegationTarget}
 
                                 />
                             </FormGroup>
+
                             <FormGroup
-                                helperText="Adjust Order Amount ..."
-                                label="Lovelaces (1 000 000 lovelaces = 1 ADA)"
-                                labelFor="order-amount-input2"
+                                helperText="https://my-metadata-url.json"
+                                label="Optional: Metadata URL"
                             >
-                                <NumericInput
-                                    id="order-amount-input2"
+                                <InputGroup
                                     disabled={false}
-                                    leftIcon={"variable"}
-                                    allowNumericCharactersOnly={true}
-                                    value={this.state.lovelaceToSend}
-                                    min={1000000}
-                                    stepSize={1000000}
-                                    majorStepSize={1000000}
-                                    onValueChange={(event) => this.setState({lovelaceToSend: event})}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataURL}
+
                                 />
                             </FormGroup>
 
-                            <button style={{padding: "10px"}} onClick={this.buildSendADATransaction}>Run</button>
+                            <FormGroup
+                                helperText=""
+                                label="Optional: Metadata Hash"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataHash}
+
+                                />
+                            </FormGroup>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitMetadataTx({dRep_id : this.state.dRepIDBech32, stake_credential : this.state.stakeKey, metadata_url : this.state.cip95MetadataURL, metadata_hash : this.state.cip95MetadataHash}) }>Delegate!</button>
                         </div>
                     } />
-                    <Tab id="2" title="2. Send Token to Address" panel={
+                    <Tab id="2" title="2. Submit DRep Registration 👷‍♂️" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
-                                helperText="insert an address where you want to send some ADA ..."
-                                label="Address where to send ADA"
+                                helperText="https://my-metadata-url.json"
+                                label="Optional: Metadata URL"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({addressBech32SendADA: event.target.value})}
-                                    value={this.state.addressBech32SendADA}
+                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataURL}
 
                                 />
                             </FormGroup>
+
                             <FormGroup
-                                helperText="Make sure you have enough of Asset in your wallet ..."
-                                label="Amount of Assets to Send"
-                                labelFor="asset-amount-input"
-                            >
-                                <NumericInput
-                                    id="asset-amount-input"
-                                    disabled={false}
-                                    leftIcon={"variable"}
-                                    allowNumericCharactersOnly={true}
-                                    value={this.state.assetAmountToSend}
-                                    min={1}
-                                    stepSize={1}
-                                    majorStepSize={1}
-                                    onValueChange={(event) => this.setState({assetAmountToSend: event})}
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="Hex of the Policy Id"
-                                label="Asset PolicyId"
+                                helperText=""
+                                label="Optional: Metadata Hash"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({assetPolicyIdHex: event.target.value})}
-                                    value={this.state.assetPolicyIdHex}
-
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="Hex of the Asset Name"
-                                label="Asset Name"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({assetNameHex: event.target.value})}
-                                    value={this.state.assetNameHex}
+                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataHash}
 
                                 />
                             </FormGroup>
 
-                            <button style={{padding: "10px"}} onClick={this.buildSendTokenTransaction}>Run</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitMetadataTx({ dRep_id : this.state.dRepIDBech32, stake_credential : this.state.stakeKey, metadata_url : this.state.cip95MetadataURL, metadata_hash : this.state.cip95MetadataHash}) }>Register</button>
                         </div>
                     } />
-                    <Tab id="3" title="3. Send ADA to Plutus Script" panel={
+                    <Tab id="3" title="3. Submit DRep Retirement 👴" panel={
                         <div style={{marginLeft: "20px"}}>
+
                             <FormGroup
-                                helperText="insert a Script address where you want to send some ADA ..."
-                                label="Script Address where to send ADA"
+                                helperText=""
+                                label="Retirement Epoch"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({addressScriptBech32: event.target.value})}
-                                    value={this.state.addressScriptBech32}
+                                    onChange={(event) => this.setState({dRepRetirementEpoch: event.target.value})}
+                                    defaultValue={this.state.dRepRetirementEpoch}
 
                                 />
                             </FormGroup>
+
                             <FormGroup
-                                helperText="Adjust Order Amount ..."
-                                label="Lovelaces (1 000 000 lovelaces = 1 ADA)"
-                                labelFor="order-amount-input2"
-                            >
-                                <NumericInput
-                                    id="order-amount-input2"
-                                    disabled={false}
-                                    leftIcon={"variable"}
-                                    allowNumericCharactersOnly={true}
-                                    value={this.state.lovelaceToSend}
-                                    min={1000000}
-                                    stepSize={1000000}
-                                    majorStepSize={1000000}
-                                    onValueChange={(event) => this.setState({lovelaceToSend: event})}
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="insert a Datum ..."
-                                label="Datum that locks the ADA at the script address ..."
+                                helperText="https://my-metadata-url.json"
+                                label="Optional: Metadata URL"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({datumStr: event.target.value})}
-                                    value={this.state.datumStr}
+                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataURL}
 
                                 />
                             </FormGroup>
-                            <button style={{padding: "10px"}} onClick={this.buildSendAdaToPlutusScript}>Run</button>
+
+                            <FormGroup
+                                helperText=""
+                                label="Optional: Metadata Hash"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataHash}
+
+                                />
+                            </FormGroup>
+
+                    <button style={{padding: "10px"}} onClick={ () => this.buildSubmitMetadataTx({ dRep_id : this.state.dRepIDBech32, retirement_epoch : this.state.dRepRetirementEpoch, metadata_url : this.state.cip95MetadataURL, metadata_hash : this.state.cip95MetadataHash}) }>Retire</button>
                         </div>
                     } />
-                    <Tab id="4" title="4. Send Token to Plutus Script" panel={
+                    <Tab id="4" title="4. Submit Vote 🗳" panel={
                         <div style={{marginLeft: "20px"}}>
+
                             <FormGroup
-                                helperText="Script address where ADA is locked ..."
-                                label="Script Address"
+                                helperText=""
+                                label="Gov Action ID"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({addressScriptBech32: event.target.value})}
-                                    value={this.state.addressScriptBech32}
+                                    onChange={(event) => this.setState({voteGovActionID: event.target.value})}
+                                    defaultValue={this.state.voteGovActionID}
 
                                 />
                             </FormGroup>
+
                             <FormGroup
-                                helperText="Need to send ADA with Tokens ..."
-                                label="Lovelaces (1 000 000 lovelaces = 1 ADA)"
-                                labelFor="order-amount-input2"
-                            >
-                                <NumericInput
-                                    id="order-amount-input2"
-                                    disabled={false}
-                                    leftIcon={"variable"}
-                                    allowNumericCharactersOnly={true}
-                                    value={this.state.lovelaceToSend}
-                                    min={1000000}
-                                    stepSize={1000000}
-                                    majorStepSize={1000000}
-                                    onValueChange={(event) => this.setState({lovelaceToSend: event})}
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="Make sure you have enough of Asset in your wallet ..."
-                                label="Amount of Assets to Send"
-                                labelFor="asset-amount-input"
-                            >
-                                <NumericInput
-                                    id="asset-amount-input"
-                                    disabled={false}
-                                    leftIcon={"variable"}
-                                    allowNumericCharactersOnly={true}
-                                    value={this.state.assetAmountToSend}
-                                    min={1}
-                                    stepSize={1}
-                                    majorStepSize={1}
-                                    onValueChange={(event) => this.setState({assetAmountToSend: event})}
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="Hex of the Policy Id"
-                                label="Asset PolicyId"
+                                helperText="Yes | No | Abstain"
+                                label="Vote Choice"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({assetPolicyIdHex: event.target.value})}
-                                    value={this.state.assetPolicyIdHex}
+                                    onChange={(event) => this.setState({voteChoice: event.target.value})}
+                                    defaultValue={this.state.voteChoice}
 
                                 />
                             </FormGroup>
+
                             <FormGroup
-                                helperText="Hex of the Asset Name"
-                                label="Asset Name"
+                                helperText="https://my-metadata-url.json"
+                                label="Optional: Metadata URL"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({assetNameHex: event.target.value})}
-                                    value={this.state.assetNameHex}
+                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataURL}
 
                                 />
                             </FormGroup>
+
                             <FormGroup
-                                helperText="insert a Datum ..."
-                                label="Datum that locks the ADA at the script address ..."
+                                helperText=""
+                                label="Optional: Metadata Hash"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({datumStr: event.target.value})}
-                                    value={this.state.datumStr}
+                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataHash}
 
                                 />
                             </FormGroup>
-                            <button style={{padding: "10px"}} onClick={this.buildSendTokenToPlutusScript}>Run</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitMetadataTx({ governance_action_id : this.state.voteGovActionID, role : "dRep", witness : "witness", metadata_url : this.state.cip95MetadataURL, metadata_hash : this.state.cip95MetadataHash, vote : this.state.voteChoice}) }>Vote!</button>
                         </div>
                     } />
-                    <Tab id="5" title="5. Redeem ADA from Plutus Script" panel={
+                    <Tab id="5" title="5. Submit Governance Action 💡" panel={
                         <div style={{marginLeft: "20px"}}>
+
                             <FormGroup
-                                helperText="Script address where ADA is locked ..."
-                                label="Script Address"
+                                helperText=""
+                                label="Gov Action Type"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({addressScriptBech32: event.target.value})}
-                                    value={this.state.addressScriptBech32}
+                                    onChange={(event) => this.setState({govActionType: event.target.value})}
+                                    defaultValue={this.state.govActionType}
 
                                 />
                             </FormGroup>
+
                             <FormGroup
-                                helperText="content of the plutus script encoded as CborHex ..."
-                                label="Plutus Script CborHex"
+                                helperText=""
+                                label="Last Gov Action Hash"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({plutusScriptCborHex: event.target.value})}
-                                    value={this.state.plutusScriptCborHex}
+                                    onChange={(event) => this.setState({govActionHash: event.target.value})}
+                                    defaultValue={this.state.govActionHash}
 
                                 />
                             </FormGroup>
+
                             <FormGroup
-                                helperText="Transaction hash ... If empty then run n. 3 first to lock some ADA"
-                                label="UTXO where ADA is locked"
+                                helperText="https://my-metadata-url.json"
+                                label="Optional: Metadata URL"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({transactionIdLocked: event.target.value})}
-                                    value={this.state.transactionIdLocked}
+                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataURL}
 
                                 />
                             </FormGroup>
+
                             <FormGroup
-                                helperText="UTXO IndexId#, usually it's 0 ..."
-                                label="Transaction Index #"
-                                labelFor="order-amount-input2"
-                            >
-                                <NumericInput
-                                    id="order-amount-input2"
-                                    disabled={false}
-                                    leftIcon={"variable"}
-                                    allowNumericCharactersOnly={true}
-                                    value={this.state.transactionIndxLocked}
-                                    min={0}
-                                    stepSize={1}
-                                    majorStepSize={1}
-                                    onValueChange={(event) => this.setState({transactionIndxLocked: event})}
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="Adjust Order Amount ..."
-                                label="Lovelaces (1 000 000 lovelaces = 1 ADA)"
-                                labelFor="order-amount-input2"
-                            >
-                                <NumericInput
-                                    id="order-amount-input2"
-                                    disabled={false}
-                                    leftIcon={"variable"}
-                                    allowNumericCharactersOnly={true}
-                                    value={this.state.lovelaceLocked}
-                                    min={1000000}
-                                    stepSize={1000000}
-                                    majorStepSize={1000000}
-                                    onValueChange={(event) => this.setState({lovelaceLocked: event})}
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="insert a Datum ..."
-                                label="Datum that unlocks the ADA at the script address ..."
+                                helperText=""
+                                label="Optional: Metadata Hash"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({datumStr: event.target.value})}
-                                    value={this.state.datumStr}
+                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataHash}
 
                                 />
                             </FormGroup>
-                            <FormGroup
-                                helperText="Needs to be enough to execute the contract ..."
-                                label="Manual Fee"
-                                labelFor="order-amount-input2"
-                            >
-                                <NumericInput
-                                    id="order-amount-input2"
-                                    disabled={false}
-                                    leftIcon={"variable"}
-                                    allowNumericCharactersOnly={true}
-                                    value={this.state.manualFee}
-                                    min={160000}
-                                    stepSize={100000}
-                                    majorStepSize={100000}
-                                    onValueChange={(event) => this.setState({manualFee: event})}
-                                />
-                            </FormGroup>
-                            <button style={{padding: "10px"}} onClick={this.buildRedeemAdaFromPlutusScript}>Run</button>
-                            {/*<button style={{padding: "10px"}} onClick={this.signTransaction}>2. Sign Transaction</button>*/}
-                            {/*<button style={{padding: "10px"}} onClick={this.submitTransaction}>3. Submit Transaction</button>*/}
-                        </div>
-                    } />
-                    <Tab id="6" title="6. Redeem Tokens from Plutus Script" panel={
-                        <div style={{marginLeft: "20px"}}>
-                            <FormGroup
-                                helperText="Script address where ADA is locked ..."
-                                label="Script Address"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({addressScriptBech32: event.target.value})}
-                                    value={this.state.addressScriptBech32}
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitMetadataTx({ governance_type : this.state.govActionType, gov_action_deposit : this.state.govActionDeposit, last_gov_action_hash : this.state.govActionHash, metadata_url : this.state.cip95MetadataURL, metadata_hash : this.state.cip95MetadataHash}) }>Submit!</button>
 
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="content of the plutus script encoded as CborHex ..."
-                                label="Plutus Script CborHex"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({plutusScriptCborHex: event.target.value})}
-                                    value={this.state.plutusScriptCborHex}
-
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="Transaction hash ... If empty then run n. 3 first to lock some ADA"
-                                label="UTXO where ADA is locked"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({transactionIdLocked: event.target.value})}
-                                    value={this.state.transactionIdLocked}
-
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="UTXO IndexId#, usually it's 0 ..."
-                                label="Transaction Index #"
-                                labelFor="order-amount-input2"
-                            >
-                                <NumericInput
-                                    id="order-amount-input2"
-                                    disabled={false}
-                                    leftIcon={"variable"}
-                                    allowNumericCharactersOnly={true}
-                                    value={this.state.transactionIndxLocked}
-                                    min={0}
-                                    stepSize={1}
-                                    majorStepSize={1}
-                                    onValueChange={(event) => this.setState({transactionIndxLocked: event})}
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="Adjust Order Amount ..."
-                                label="Lovelaces (1 000 000 lovelaces = 1 ADA)"
-                                labelFor="order-amount-input2"
-                            >
-                                <NumericInput
-                                    id="order-amount-input2"
-                                    disabled={false}
-                                    leftIcon={"variable"}
-                                    allowNumericCharactersOnly={true}
-                                    value={this.state.lovelaceLocked}
-                                    min={1000000}
-                                    stepSize={1000000}
-                                    majorStepSize={1000000}
-                                    onValueChange={(event) => this.setState({lovelaceLocked: event})}
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="Make sure you have enough of Asset in your wallet ..."
-                                label="Amount of Assets to Reedem"
-                                labelFor="asset-amount-input"
-                            >
-                                <NumericInput
-                                    id="asset-amount-input"
-                                    disabled={false}
-                                    leftIcon={"variable"}
-                                    allowNumericCharactersOnly={true}
-                                    value={this.state.assetAmountToSend}
-                                    min={1}
-                                    stepSize={1}
-                                    majorStepSize={1}
-                                    onValueChange={(event) => this.setState({assetAmountToSend: event})}
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="Hex of the Policy Id"
-                                label="Asset PolicyId"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({assetPolicyIdHex: event.target.value})}
-                                    value={this.state.assetPolicyIdHex}
-
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="Hex of the Asset Name"
-                                label="Asset Name"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({assetNameHex: event.target.value})}
-                                    value={this.state.assetNameHex}
-
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="insert a Datum ..."
-                                label="Datum that unlocks the ADA at the script address ..."
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({datumStr: event.target.value})}
-                                    value={this.state.datumStr}
-
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="Needs to be enough to execute the contract ..."
-                                label="Manual Fee"
-                                labelFor="order-amount-input2"
-                            >
-                                <NumericInput
-                                    id="order-amount-input2"
-                                    disabled={false}
-                                    leftIcon={"variable"}
-                                    allowNumericCharactersOnly={true}
-                                    value={this.state.manualFee}
-                                    min={160000}
-                                    stepSize={100000}
-                                    majorStepSize={100000}
-                                    onValueChange={(event) => this.setState({manualFee: event})}
-                                />
-                            </FormGroup>
-                            <button style={{padding: "10px"}} onClick={this.buildRedeemTokenFromPlutusScript}>Run</button>
                         </div>
                     } />
                     <Tabs.Expander />
                 </Tabs>
+                <p><span style={{fontWeight: "bold"}}>CborHex Tx: </span>{this.state.cip95ResultTx}</p>
+                <p><span style={{fontWeight: "bold"}}>Tx Hash: </span>{this.state.cip95ResultHash}</p>
+                <p><span style={{fontWeight: "bold"}}>Witnesses: </span>{this.state.cip95ResultWitness}</p>
 
                 <hr style={{marginTop: "40px", marginBottom: "40px"}}/>
-
-                {/*<p>{`Unsigned txBodyCborHex: ${this.state.txBodyCborHex_unsigned}`}</p>*/}
-                {/*<p>{`Signed txBodyCborHex: ${this.state.txBodyCborHex_signed}`}</p>*/}
-                <p>{`Submitted Tx Hash: ${this.state.submittedTxHash}`}</p>
-                <p>{this.state.submittedTxHash ? 'check your wallet !' : ''}</p>
-
-
 
             </div>
         )
