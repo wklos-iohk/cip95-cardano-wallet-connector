@@ -706,76 +706,73 @@ export default class App extends React.Component
 
     buildSubmitMetadataTx = async (txMetadata) => {
 
+        // Initialize builder with protocol parameters
         const txBuilder = await this.initTransactionBuilder();
-        // Send Tx to own address
+
+        // Set output and change addresses to those of our wallet
         const shelleyOutputAddress = Address.from_bech32(this.state.usedAddress);
         const shelleyChangeAddress = Address.from_bech32(this.state.changeAddress);
         
+        // Add output of 1 ADA to the address of our wallet
         txBuilder.add_output(
             TransactionOutput.new(
                 shelleyOutputAddress,
-                Value.new(BigNum.from_str("3000000"))
+                Value.new(BigNum.from_str("1000000"))
             ),
         );
 
-        // Add ceritificate fields as metadata
-        const obj = txMetadata;
-
-        // add metadata to tx, have to jump through some object data strcture hoops 
-        const metadata = encode_json_str_to_metadatum(JSON.stringify(obj), MetadataJsonSchema.NoConversions);
+        // Add metadata to tx, have to jump through some data structure hoops 
+        const metadata = encode_json_str_to_metadatum(JSON.stringify(txMetadata), MetadataJsonSchema.NoConversions);
         const auxMetadata = AuxiliaryData.new();
-        
+        // Map metadata to metadatum label
         const transactionMetadata = GeneralTransactionMetadata.new();
         transactionMetadata.insert(this.state.cip95MetadatumLabel, metadata);
         auxMetadata.set_metadata(transactionMetadata);
-        
         const metadatumLabels = TransactionMetadatumLabels.new();
         metadatumLabels.add(this.state.cip95MetadatumLabel);
         
-        // add metadata to tx builder for correct fee calculation
-        txBuilder.add_json_metadatum_with_schema(metadatumLabels.get(0), JSON.stringify(obj), MetadataJsonSchema.NoConversions);
+        // Add metadata to tx builder for correct fee calculation
+        txBuilder.add_json_metadatum_with_schema(metadatumLabels.get(0), JSON.stringify(txMetadata), MetadataJsonSchema.NoConversions);
 
-        // Find the available UTXOs in the wallet and
-        // us them as Inputs
+        // Find the available UTXOs in the wallet and use them as Inputs for the transaction
         const txUnspentOutputs = await this.getTxUnspentOutputs();
         txBuilder.add_inputs_from(txUnspentOutputs, 1)
 
-        // calculate the min fee required and send any change to an address
+        // Set change address, incase too much ADA provided for fee
         txBuilder.add_change_if_needed(shelleyChangeAddress)
         
-        const stakeKeyHash = (PublicKey.from_bytes(Buffer.from(this.state.stakeKey, 'hex'))).hash();
-
-        // once the transaction is ready, we build it to get the tx body without witnesses
+        // Build transaction body
         const txBody = txBuilder.build();
 
-        // txBody.required_signers(stakeKeyHash)
-
-        // Tx witness
+        // Make a full transaction, passing in empty witness set
         const transactionWitnessSet = TransactionWitnessSet.new();
-          
         const tx = Transaction.new(
             txBody,
             TransactionWitnessSet.from_bytes(transactionWitnessSet.to_bytes()),
             auxMetadata,
-        )
+        );
 
+        // Ask wallet to to provide signature (witnesses) for the transaction
         let txVkeyWitnesses = await this.API.signTx(Buffer.from(tx.to_bytes(), "utf8").toString("hex"), true);
+        
+        // Create witness set object using the witnesses provided by the wallet
         txVkeyWitnesses = TransactionWitnessSet.from_bytes(Buffer.from(txVkeyWitnesses, "hex"));
         transactionWitnessSet.set_vkeys(txVkeyWitnesses.vkeys());
-
+        
+        // Build transaction with witnesses
         const signedTx = Transaction.new(
             tx.body(),
             transactionWitnessSet,
             tx.auxiliary_data(),
         );
-
-        //(signedTx.body()).required_signers(stakeKeyHash);
-
-        const result = await this.API.submitVoteDelegation(Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"));
-        console.log(result)
-        const cip95ResultTx = result.tx;
-        const cip95ResultHash = result.txHash;
-        const cip95ResultWitness = result.witness;
+        
+        // Submit built signed transaction to chain, via wallet's submit transaction endpoint
+        const result = await this.API.submitTx(Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"));
+        console.log("Built and submitted metadata transaction: ", result)
+        // Set results so they can be rendered
+        const cip95ResultTx = Buffer.from(signedTx.to_bytes(), "utf8").toString("hex");
+        const cip95ResultHash = result;
+        const cip95ResultWitness = Buffer.from(txVkeyWitnesses.to_bytes(), "utf8").toString("hex");
         this.setState({cip95ResultTx});
         this.setState({cip95ResultHash});
         this.setState({cip95ResultWitness});
