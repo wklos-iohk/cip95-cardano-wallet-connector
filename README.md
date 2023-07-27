@@ -1,6 +1,6 @@
 # CIP-95 Cardano DApp Wallet Connector
 
-Corresponding CIP-95 commit: [197a814](https://github.com/cardano-foundation/CIPs/pull/509/commits/197a814aed897ae8682c083602c131cc16654ab8).
+Corresponding CIP-95 commit: [c067362](https://github.com/cardano-foundation/CIPs/pull/509/commits/c067362e6427e8a0ebee4a27cd75b10fee5931b4).
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app) from a fork of [dynamicstrategies/cardano-wallet-connector](https://github.com/dynamicstrategies/cardano-wallet-connector).
 
