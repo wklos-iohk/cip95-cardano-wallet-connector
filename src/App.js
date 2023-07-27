@@ -833,7 +833,7 @@ export default class App extends React.Component
                 <p><span style={{fontWeight: "lighter"}}>Bech32 DRep ID (Key digest): </span>{this.state.dRepIDBech32}</p>
                 <p><span style={{fontWeight: "bold"}}>.getActivePubStakeKeys(): </span>{this.state.stakeKey}</p>
 
-
+                <p><span style={{fontWeight: "bold"}}>Build Tx and then .signTx(): </span></p>
                 <Tabs id="cip95" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95TabId}>
                     <Tab id="1" title="1. Submit Vote Delegation 🦸‍♀️" panel={
                         <div style={{marginLeft: "20px"}}>
@@ -876,7 +876,7 @@ export default class App extends React.Component
 
                                 />
                             </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitMetadataTx({dRep_id : this.state.dRepIDBech32, stake_credential : this.state.stakeKey, metadata_url : this.state.cip95MetadataURL, metadata_hash : this.state.cip95MetadataHash}) }>Delegate!</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitMetadataTx({dRep_id : this.state.dRepIDBech32, stake_credential : this.state.stakeKey, metadata_url : this.state.cip95MetadataURL, metadata_hash : this.state.cip95MetadataHash}) }>.submitTx()</button>
                         </div>
                     } />
                     <Tab id="2" title="2. Submit DRep Registration 👷‍♂️" panel={
@@ -908,7 +908,7 @@ export default class App extends React.Component
                                 />
                             </FormGroup>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitMetadataTx({ dRep_id : this.state.dRepIDBech32, stake_credential : this.state.stakeKey, metadata_url : this.state.cip95MetadataURL, metadata_hash : this.state.cip95MetadataHash}) }>Register</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitMetadataTx({ DRep_id : this.state.dRepIDBech32, stake_credential : this.state.stakeKey, metadata_url : this.state.cip95MetadataURL, metadata_hash : this.state.cip95MetadataHash}) }>.submitTx()</button>
                         </div>
                     } />
                     <Tab id="3" title="3. Submit DRep Retirement 👴" panel={
@@ -953,7 +953,7 @@ export default class App extends React.Component
                                 />
                             </FormGroup>
 
-                    <button style={{padding: "10px"}} onClick={ () => this.buildSubmitMetadataTx({ dRep_id : this.state.dRepIDBech32, retirement_epoch : this.state.dRepRetirementEpoch, metadata_url : this.state.cip95MetadataURL, metadata_hash : this.state.cip95MetadataHash}) }>Retire</button>
+                    <button style={{padding: "10px"}} onClick={ () => this.buildSubmitMetadataTx({ DRep_id : this.state.dRepIDBech32, retirement_epoch : this.state.dRepRetirementEpoch, metadata_url : this.state.cip95MetadataURL, metadata_hash : this.state.cip95MetadataHash}) }>.submitTx()</button>
                         </div>
                     } />
                     <Tab id="4" title="4. Submit Vote 🗳" panel={
@@ -1010,7 +1010,7 @@ export default class App extends React.Component
 
                                 />
                             </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitMetadataTx({ governance_action_id : this.state.voteGovActionID, role : "dRep", witness : "witness", metadata_url : this.state.cip95MetadataURL, metadata_hash : this.state.cip95MetadataHash, vote : this.state.voteChoice}) }>Vote!</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitMetadataTx({ governance_action_id : this.state.voteGovActionID, role : "dRep", witness : "witness", metadata_url : this.state.cip95MetadataURL, metadata_hash : this.state.cip95MetadataHash, vote : this.state.voteChoice}) }>.submitTx()</button>
                         </div>
                     } />
                     <Tab id="5" title="5. Submit Governance Action 💡" panel={
@@ -1067,7 +1067,7 @@ export default class App extends React.Component
 
                                 />
                             </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitMetadataTx({ governance_type : this.state.govActionType, gov_action_deposit : this.state.govActionDeposit, last_gov_action_hash : this.state.govActionHash, metadata_url : this.state.cip95MetadataURL, metadata_hash : this.state.cip95MetadataHash}) }>Submit!</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitMetadataTx({ governance_type : this.state.govActionType, gov_action_deposit : this.state.govActionDeposit, last_gov_action_hash : this.state.govActionHash, metadata_url : this.state.cip95MetadataURL, metadata_hash : this.state.cip95MetadataHash}) }>.submitTx()</button>
 
                         </div>
                     } />
