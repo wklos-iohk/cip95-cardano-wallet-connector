@@ -67,6 +67,7 @@ import {
     Certificates,
     TransactionWitnessSets,
     StakeDeregistration,
+    RewardAddress,
 
 } from "@emurgo/cardano-serialization-lib-asmjs"
 import "./App.css";
@@ -125,6 +126,11 @@ export default class App extends React.Component
 
             dRepKey: undefined,
             stakeKey: undefined,
+            stakeKeyHashHex: undefined,
+            stakeCredentialHex: undefined,
+            stakeAddrTestHex: undefined,
+            stakeAddrMainHex: undefined,
+            rewardAddress: undefined,
             dRepID: undefined,
             dRepIDBech32: undefined,
             cip95ResultTx: "",
@@ -544,6 +550,10 @@ export default class App extends React.Component
 
                         dRepKey: "",
                         stakeKey: "",
+                        stakeKeyHashHex: "",
+                        stakeAddrTestHex: "",
+                        stakeAddrMainHex: "",
+                        stakeCredentialHex: "",
                         dRepID: "",
                         dRepIDBech32: "",
                         cip95ResultTx: "",
@@ -579,6 +589,10 @@ export default class App extends React.Component
     
                             dRepKey: "",
                             stakeKey: "",
+                            stakeKeyHashHex: "",
+                            stakeCredentialHex: "",
+                            stakeAddrTestHex: "",
+                            stakeAddrMainHex: "",
                             dRepID: "",
                             dRepIDBech32: "",
                             cip95ResultTx: "",
@@ -604,6 +618,10 @@ export default class App extends React.Component
 
                     dRepKey: "",
                     stakeKey: "",
+                    stakeKeyHashHex: "",
+                    stakeCredentialHex: "",
+                    stakeAddrTestHex: "",
+                    stakeAddrMainHex: "",
                     dRepID: "",
                     dRepIDBech32: "",
                     cip95ResultTx: "",
@@ -681,6 +699,28 @@ export default class App extends React.Component
             const rawFirst = raw[0];
             const stakeKey = rawFirst;
             this.setState({stakeKey})
+
+            const stakeKeyBytes = Buffer.from(stakeKey, "hex");
+
+            // Hash the stake key
+            const stakeKeyHash = ((PublicKey.from_bytes(stakeKeyBytes)).hash());
+            console.log("Stake Key Hash: ", Buffer.from(stakeKeyHash.to_bytes()).toString('hex'));
+            this.setState({stakeKeyHashHex: Buffer.from(stakeKeyHash.to_bytes()).toString('hex')});
+
+            // Make a StakeCredential from the hash
+            const stakeCredential = StakeCredential.from_keyhash(stakeKeyHash);
+            console.log("Stake Credential: ", Buffer.from(stakeCredential.to_bytes()).toString('hex'));
+            this.setState({stakeCredentialHex : Buffer.from(stakeCredential.to_bytes()).toString('hex')});
+
+            // Make a StakeAddresses from the credential
+            const stakeAddrTestHex = Buffer.from((RewardAddress.new(0, stakeCredential)).to_address().to_bytes()).toString('hex');
+            const stakeAddrMainHex = Buffer.from((RewardAddress.new(1, stakeCredential)).to_address().to_bytes()).toString('hex');
+            console.log("Testnet Stake Address (Hex): ", stakeAddrTestHex);
+            console.log("Mainnet Stake Address (Hex): ", stakeAddrMainHex);
+
+            this.setState({stakeAddrTestHex});
+            this.setState({stakeAddrMainHex});
+
         } catch (err) {
             console.log(err)
         }
@@ -832,6 +872,10 @@ export default class App extends React.Component
                 <p><span style={{fontWeight: "lighter"}}>Hex DRep ID (Key digest): </span>{this.state.dRepID}</p>
                 <p><span style={{fontWeight: "lighter"}}>Bech32 DRep ID (Key digest): </span>{this.state.dRepIDBech32}</p>
                 <p><span style={{fontWeight: "bold"}}>.getActivePubStakeKeys(): </span>{this.state.stakeKey}</p>
+                <p><span style={{fontWeight: "lighter"}}>Stake Key Hash (hex): </span>{this.state.stakeKeyHashHex}</p>
+                <p><span style={{fontWeight: "lighter"}}>Stake Credential (hex): </span>{this.state.stakeCredentialHex}</p>
+                <p><span style={{fontWeight: "lighter"}}>Stake Testnet Address (hex): </span>{this.state.stakeAddrTestHex}</p>
+                <p><span style={{fontWeight: "lighter"}}>Stake Mainnet Address (hex): </span>{this.state.stakeAddrMainHex}</p>
 
                 <p><span style={{fontWeight: "bold"}}>Build Tx and then .signTx(): </span></p>
                 <Tabs id="cip95" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95TabId}>
