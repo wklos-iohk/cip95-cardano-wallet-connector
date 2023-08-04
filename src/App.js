@@ -130,6 +130,8 @@ export default class App extends React.Component
             stakeCredentialHex: undefined,
             stakeAddrTestHex: undefined,
             stakeAddrMainHex: undefined,
+            stakeAddrTestBech: undefined,
+            stakeAddrMainBech: undefined,
             rewardAddress: undefined,
             dRepID: undefined,
             dRepIDBech32: undefined,
@@ -553,6 +555,8 @@ export default class App extends React.Component
                         stakeKeyHashHex: "",
                         stakeAddrTestHex: "",
                         stakeAddrMainHex: "",
+                        stakeAddrTestBech: "",
+                        stakeAddrMainBech: "",
                         stakeCredentialHex: "",
                         dRepID: "",
                         dRepIDBech32: "",
@@ -593,6 +597,8 @@ export default class App extends React.Component
                             stakeCredentialHex: "",
                             stakeAddrTestHex: "",
                             stakeAddrMainHex: "",
+                            stakeAddrTestBech: "",
+                            stakeAddrMainBech: "",
                             dRepID: "",
                             dRepIDBech32: "",
                             cip95ResultTx: "",
@@ -622,6 +628,8 @@ export default class App extends React.Component
                     stakeCredentialHex: "",
                     stakeAddrTestHex: "",
                     stakeAddrMainHex: "",
+                    stakeAddrTestBech: "",
+                    stakeAddrMainBech: "",
                     dRepID: "",
                     dRepIDBech32: "",
                     cip95ResultTx: "",
@@ -712,14 +720,28 @@ export default class App extends React.Component
             console.log("Stake Credential: ", Buffer.from(stakeCredential.to_bytes()).toString('hex'));
             this.setState({stakeCredentialHex : Buffer.from(stakeCredential.to_bytes()).toString('hex')});
 
-            // Make a StakeAddresses from the credential
+            // Make a StakeAddress Hex from the credential
             const stakeAddrTestHex = Buffer.from((RewardAddress.new(0, stakeCredential)).to_address().to_bytes()).toString('hex');
             const stakeAddrMainHex = Buffer.from((RewardAddress.new(1, stakeCredential)).to_address().to_bytes()).toString('hex');
             console.log("Testnet Stake Address (Hex): ", stakeAddrTestHex);
             console.log("Mainnet Stake Address (Hex): ", stakeAddrMainHex);
-
             this.setState({stakeAddrTestHex});
             this.setState({stakeAddrMainHex});
+
+            // Make a StakeAddress Bech from the credential
+            const stakeAddrTestBech = (RewardAddress.new(0, stakeCredential)).to_address().to_bech32();
+            const stakeAddrMainBech = (RewardAddress.new(1, stakeCredential)).to_address().to_bech32();
+            console.log("Testnet Stake Address (Bech): ", (RewardAddress.new(0, stakeCredential)).to_address().to_bech32());
+            console.log("Mainnet Stake Address (Bech): ", (RewardAddress.new(1, stakeCredential)).to_address().to_bech32());
+            this.setState({stakeAddrTestBech});
+            this.setState({stakeAddrMainBech});
+
+
+            // const test = Address.from_bech32('stake_test1up68v30p88a24e80fpk3sf4lpg00kd6hamjfwmrn34jxeksp6amdu');
+            // const test2 = (RewardAddress.from_address(test)).to_address();
+            // // 747645e139faaae4ef486d1826bf0a1efb3757eee4976c738d646cda
+            
+            // console.log("lol: ", Buffer.from(test2.to_bytes()).toString('hex'));
 
         } catch (err) {
             console.log(err)
@@ -864,7 +886,7 @@ export default class App extends React.Component
                 <p style={{paddingTop: "20px"}}><span style={{fontWeight: "bold"}}>UTXOs: </span>{this.state.Utxos?.map(x => <li style={{fontSize: "10px"}} key={`${x.str}${x.multiAssetStr}`}>{`${x.str}${x.multiAssetStr}`}</li>)}</p>
                 <p style={{paddingTop: "20px"}}><span style={{fontWeight: "bold"}}>Balance: </span>{this.state.balance}</p>
                 <p><span style={{fontWeight: "bold"}}>Change Address: </span>{this.state.changeAddress}</p>
-                <p><span style={{fontWeight: "bold"}}>Staking Address: </span>{this.state.rewardAddress}</p>
+                <p><span style={{fontWeight: "bold"}}>api.getRewardsAddress(): </span>{this.state.rewardAddress}</p>
                 <p><span style={{fontWeight: "bold"}}>Used Address: </span>{this.state.usedAddress}</p>
                 <hr style={{marginTop: "40px", marginBottom: "40px"}}/>
                 <h1>CIP-95 🤠</h1>
@@ -875,7 +897,9 @@ export default class App extends React.Component
                 <p><span style={{fontWeight: "lighter"}}>Stake Key Hash (hex): </span>{this.state.stakeKeyHashHex}</p>
                 <p><span style={{fontWeight: "lighter"}}>Stake Credential (hex): </span>{this.state.stakeCredentialHex}</p>
                 <p><span style={{fontWeight: "lighter"}}>Stake Testnet Address (hex): </span>{this.state.stakeAddrTestHex}</p>
+                <p><span style={{fontWeight: "lighter"}}>Stake Testnet Address (Bech): </span>{this.state.stakeAddrTestBech}</p>
                 <p><span style={{fontWeight: "lighter"}}>Stake Mainnet Address (hex): </span>{this.state.stakeAddrMainHex}</p>
+                <p><span style={{fontWeight: "lighter"}}>Stake Mainnet Address (Bech): </span>{this.state.stakeAddrMainBech}</p>
 
                 <p><span style={{fontWeight: "bold"}}>Build Tx and then .signTx(): </span></p>
                 <Tabs id="cip95" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95TabId}>
