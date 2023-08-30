@@ -751,7 +751,7 @@ export default class App extends React.Component
     enableCIP95Wallet = async () => {
         const walletKey = this.state.whichWalletSelected;
         try {
-            this.API = await window.cardano[walletKey].enable({"cip": 95});
+            this.API = await window.cardano[walletKey].enable({extensions: [{cip: 95}]});
         } catch(err) {
             console.log(err);
         }
