@@ -1131,7 +1131,7 @@ export default class App extends React.Component
                 <p><span style={{ fontWeight: "bold" }}>.getRegisteredPubStakeKeys():</span><ul>{this.state.regStakeKeys && this.state.regStakeKeys.length > 0  ? (this.state.regStakeKeys.map((item, index) => (<li style={{ fontSize: "12px" }} key={index}>{item}</li>))) : (<li>No registered public stake keys returned.</li>)}</ul></p>
                 <p><span style={{fontWeight: "lighter"}}> First registered Stake Key Hash (hex): </span>{this.state.regStakeKeyHashHex}</p>
                 <p><span style={{ fontWeight: "bold" }}>.getUnregisteredPubStakeKeys():</span><ul>{this.state.unregStakeKeys && this.state.unregStakeKeys.length > 0  ? (this.state.unregStakeKeys.map((item, index) => (<li style={{ fontSize: "12px" }} key={index}>{item}</li>))) : (<li>No unregistered public stake keys returned.</li>)}</ul></p>
-                <p><span style={{fontWeight: "lighter"}}> First registered Stake Key Hash (hex): </span>{this.state.unregStakeKeyHashHex}</p>
+                <p><span style={{fontWeight: "lighter"}}> First unregistered Stake Key Hash (hex): </span>{this.state.unregStakeKeyHashHex}</p>
                 
                 <p><span style={{fontWeight: "bold"}}>Use CIP-95 signTx(): </span></p>
                 <Tabs id="cip95" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95TabId}>
