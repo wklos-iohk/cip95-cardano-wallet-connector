@@ -691,17 +691,17 @@ export default class App extends React.Component
 
                 // Make a StakeCredential from the hash
                 const stakeCredential = Credential.from_keyhash(stakeKeyHash);
-                console.log("Reg stake Credential: ", Buffer.from(stakeCredential.to_bytes()).toString('hex'));
+                // console.log("Reg stake Credential: ", Buffer.from(stakeCredential.to_bytes()).toString('hex'));
 
                 // Make a StakeAddress Hex from the credential
                 const stakeAddrTestHex = Buffer.from((RewardAddress.new(0, stakeCredential)).to_address().to_bytes()).toString('hex');
                 const stakeAddrMainHex = Buffer.from((RewardAddress.new(1, stakeCredential)).to_address().to_bytes()).toString('hex');
-                console.log("Testnet Reg stake Address (Hex): ", stakeAddrTestHex);
-                console.log("Mainnet Reg stake Address (Hex): ", stakeAddrMainHex);
+                // console.log("Testnet Reg stake Address (Hex): ", stakeAddrTestHex);
+                // console.log("Mainnet Reg stake Address (Hex): ", stakeAddrMainHex);
 
                 // Make a StakeAddress Bech from the credential
-                console.log("Testnet Reg stake Address (Bech): ", (RewardAddress.new(0, stakeCredential)).to_address().to_bech32());
-                console.log("Mainnet Reg stake Address (Bech): ", (RewardAddress.new(1, stakeCredential)).to_address().to_bech32());
+                // console.log("Testnet Reg stake Address (Bech): ", (RewardAddress.new(0, stakeCredential)).to_address().to_bech32());
+                // console.log("Mainnet Reg stake Address (Bech): ", (RewardAddress.new(1, stakeCredential)).to_address().to_bech32());
             }
         } catch (err) {
             console.log(err)
@@ -733,17 +733,17 @@ export default class App extends React.Component
 
                 // Make a StakeCredential from the hash
                 const stakeCredential = Credential.from_keyhash(stakeKeyHash);
-                console.log("Unreg stake Credential: ", Buffer.from(stakeCredential.to_bytes()).toString('hex'));
+                // console.log("Unreg stake Credential: ", Buffer.from(stakeCredential.to_bytes()).toString('hex'));
 
                 // Make a StakeAddress Hex from the credential
                 const stakeAddrTestHex = Buffer.from((RewardAddress.new(0, stakeCredential)).to_address().to_bytes()).toString('hex');
                 const stakeAddrMainHex = Buffer.from((RewardAddress.new(1, stakeCredential)).to_address().to_bytes()).toString('hex');
-                console.log("Testnet Unreg stake Address (Hex): ", stakeAddrTestHex);
-                console.log("Mainnet Unreg stake Address (Hex): ", stakeAddrMainHex);
+                // console.log("Testnet Unreg stake Address (Hex): ", stakeAddrTestHex);
+                // console.log("Mainnet Unreg stake Address (Hex): ", stakeAddrMainHex);
 
                 // Make a StakeAddress Bech from the credential
-                console.log("Testnet Unreg stake Address (Bech): ", (RewardAddress.new(0, stakeCredential)).to_address().to_bech32());
-                console.log("Mainnet Unreg stake Address (Bech): ", (RewardAddress.new(1, stakeCredential)).to_address().to_bech32());
+                // console.log("Testnet Unreg stake Address (Bech): ", (RewardAddress.new(0, stakeCredential)).to_address().to_bech32());
+                // console.log("Mainnet Unreg stake Address (Bech): ", (RewardAddress.new(1, stakeCredential)).to_address().to_bech32());
             }
         } catch (err) {
             console.log(err)
@@ -771,6 +771,18 @@ export default class App extends React.Component
     buildSubmitConwayTx = async () => {
         // Initialize builder with protocol parameters
         const txBuilder = await this.initTransactionBuilder();
+
+        // Set the certificate to the current certbuilder
+        if(!(this.state.certBuilder === "")){
+            txBuilder.set_certs_builder(this.state.certBuilder);
+        }
+        if(!(this.state.votingBuilder === "")){
+            txBuilder.set_voting_builder(this.state.votingBuilder);
+        }
+        if(!(this.state.govActionBuilder === "")){
+            txBuilder.set_voting_proposal_builder(this.state.govActionBuilder);
+        }
+
         // Set output and change addresses to those of our wallet
         const shelleyOutputAddress = Address.from_bech32(this.state.usedAddress);
         const shelleyChangeAddress = Address.from_bech32(this.state.changeAddress);
@@ -787,22 +799,9 @@ export default class App extends React.Component
         // Set change address, incase too much ADA provided for fee
         txBuilder.add_change_if_needed(shelleyChangeAddress)
 
-
-        if(!(this.state.certBuilder === "")){
-            // Set the certificate to the current certbuilder
-            txBuilder.set_certs_builder(this.state.certBuilder);
-        }
-
-        if(!(this.state.votingBuilder === "")){
-            txBuilder.set_voting_builder(this.state.votingBuilder);
-        }
-
-        if(!(this.state.govActionBuilder === "")){
-            txBuilder.set_voting_proposal_builder(this.state.govActionBuilder);
-        }
-
         // Build transaction body
         const txBody = txBuilder.build();
+
         // Make a full transaction, passing in empty witness set
         const transactionWitnessSet = TransactionWitnessSet.new();
         const tx = Transaction.new(
@@ -810,13 +809,11 @@ export default class App extends React.Component
             TransactionWitnessSet.from_bytes(transactionWitnessSet.to_bytes()),
         );
 
-        //console.log("UnSigned Tx: ", tx.to_json());
+        // console.log("UnSigned Tx: ", tx.to_json());
 
         // Ask wallet to to provide signature (witnesses) for the transaction
         let txVkeyWitnesses;
         txVkeyWitnesses = await this.API.signTx(Buffer.from(tx.to_bytes(), "utf8").toString("hex"), true);
-
-
         // Create witness set object using the witnesses provided by the wallet
         txVkeyWitnesses = TransactionWitnessSet.from_bytes(Buffer.from(txVkeyWitnesses, "hex"));
         transactionWitnessSet.set_vkeys(txVkeyWitnesses.vkeys());
@@ -825,8 +822,9 @@ export default class App extends React.Component
             tx.body(),
             transactionWitnessSet,
         );
-
-        //console.log("Signed Tx: ", signedTx.to_json());
+        
+        console.log("SignedTx: ", Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"))
+        // console.log("Signed Tx: ", signedTx.to_json());
         
         // Submit built signed transaction to chain, via wallet's submit transaction endpoint
         const result = await this.API.submitTx(Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"));
@@ -898,17 +896,17 @@ export default class App extends React.Component
             // Create cert object using one Ada as the deposit
             dRepRegCert = DrepRegistration.new_with_anchor(
                 dRepCred,
-                BigNum.from_str("1000000"), // deposit
+                BigNum.from_str("0"), // deposit
                 anchor
             );
         }else{
             console.log("DRep Registration - not using anchor")
             dRepRegCert = DrepRegistration.new(
                 dRepCred,
-                BigNum.from_str("1000000"),
+                BigNum.from_str("0"),
             );
         };
-        // add cert to tbuilder
+        // add cert to txbuilder
         certBuilder.add(Certificate.new_drep_registration(dRepRegCert));
         this.setState({certBuilder : certBuilder});
     }
@@ -930,13 +928,13 @@ export default class App extends React.Component
             // Create cert object using one Ada as the deposit
             dRepUpdateCert = DrepUpdate.new_with_anchor(
                 dRepCred,
-                BigNum.from_str("1000000"), // deposit
+                BigNum.from_str("0"), // deposit
                 anchor
             );
         }else{
             dRepUpdateCert = DrepUpdate.new(
                 dRepCred,
-                BigNum.from_str("1000000"),
+                BigNum.from_str("0"),
             );
         };
         // add cert to tbuilder
@@ -1114,26 +1112,26 @@ export default class App extends React.Component
                 <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
                 <h3>CIP-30 Full API</h3>
                 <p><span style={{fontWeight: "bold"}}>Network Id (0 = testnet; 1 = mainnet): </span>{this.state.networkId}</p>
-                <p><span style={{fontWeight: "bold"}}>UTXOs: </span>{this.state.Utxos?.map(x => <li style={{fontSize: "10px"}} key={`${x.str}${x.multiAssetStr}`}>{`${x.str}${x.multiAssetStr}`}</li>)}</p>
+                <p><span style={{fontWeight: "bold"}}>.getUTxOs(): </span>{this.state.Utxos?.map(x => <li style={{fontSize: "10px"}} key={`${x.str}${x.multiAssetStr}`}>{`${x.str}${x.multiAssetStr}`}</li>)}</p>
                 <p style={{paddingTop: "10px"}}><span style={{fontWeight: "bold"}}>Balance: </span>{this.state.balance}</p>
-                <p><span style={{fontWeight: "bold"}}>Change Address: </span>{this.state.changeAddress}</p>
+                <p><span style={{fontWeight: "bold"}}>.getChangeAddress(): </span>{this.state.changeAddress}</p>
                 <p><span style={{fontWeight: "bold"}}>.getRewardsAddress(): </span>{this.state.rewardAddress}</p>
-                <p><span style={{fontWeight: "bold"}}>Used Address: </span>{this.state.usedAddress}</p>
+                <p><span style={{fontWeight: "bold"}}>.getUsedAddresses(): </span>{this.state.usedAddress}</p>
                 <p><span style={{ fontWeight: "bold" }}>.getExtensions():</span><ul>{this.state.enabledExtensions && !(this.state.enabledExtensions === "")  ? (this.state.enabledExtensions.map((x) => (<li style={{ fontSize: "12px" }} key={x.cip}>{x.cip}</li>))) : (<li>No extensions enabled.</li>)}</ul></p>
 
                 <hr style={{marginTop: "40px", marginBottom: "10px"}}/>
                 <h1>CIP-95 🤠</h1>
                 {/* DRep Key Endpoints */}
-                <p><span style={{fontWeight: "bold"}}> .getPubDRepKey(): </span>{this.state.dRepKey}</p>
+                <p><span style={{fontWeight: "bold"}}>.cip95.getPubDRepKey(): </span>{this.state.dRepKey}</p>
                 <p><span style={{fontWeight: "lighter"}}>Hex DRep ID (Key digest): </span>{this.state.dRepID}</p>
                 <p><span style={{fontWeight: "lighter"}}>Bech32 DRep ID (Key digest): </span>{this.state.dRepIDBech32}</p>
                 {/* Stake Key Endpoints */}
-                <p><span style={{ fontWeight: "bold" }}>.getRegisteredPubStakeKeys():</span><ul>{this.state.regStakeKeys && this.state.regStakeKeys.length > 0  ? (this.state.regStakeKeys.map((item, index) => (<li style={{ fontSize: "12px" }} key={index}>{item}</li>))) : (<li>No registered public stake keys returned.</li>)}</ul></p>
+                <p><span style={{ fontWeight: "bold" }}>.cip95.getRegisteredPubStakeKeys():</span><ul>{this.state.regStakeKeys && this.state.regStakeKeys.length > 0  ? (this.state.regStakeKeys.map((item, index) => (<li style={{ fontSize: "12px" }} key={index}>{item}</li>))) : (<li>No registered public stake keys returned.</li>)}</ul></p>
                 <p><span style={{fontWeight: "lighter"}}> First registered Stake Key Hash (hex): </span>{this.state.regStakeKeyHashHex}</p>
-                <p><span style={{ fontWeight: "bold" }}>.getUnregisteredPubStakeKeys():</span><ul>{this.state.unregStakeKeys && this.state.unregStakeKeys.length > 0  ? (this.state.unregStakeKeys.map((item, index) => (<li style={{ fontSize: "12px" }} key={index}>{item}</li>))) : (<li>No unregistered public stake keys returned.</li>)}</ul></p>
+                <p><span style={{ fontWeight: "bold" }}>.cip95.getUnregisteredPubStakeKeys():</span><ul>{this.state.unregStakeKeys && this.state.unregStakeKeys.length > 0  ? (this.state.unregStakeKeys.map((item, index) => (<li style={{ fontSize: "12px" }} key={index}>{item}</li>))) : (<li>No unregistered public stake keys returned.</li>)}</ul></p>
                 <p><span style={{fontWeight: "lighter"}}> First unregistered Stake Key Hash (hex): </span>{this.state.unregStakeKeyHashHex}</p>
                 
-                <p><span style={{fontWeight: "bold"}}>Use CIP-95 signTx(): </span></p>
+                <p><span style={{fontWeight: "bold"}}>Use CIP-95 .signTx(): </span></p>
                 <Tabs id="cip95" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95TabId}>
                     <Tab id="1" title="🦸‍♀️ Vote Delegation" panel={
                         <div style={{marginLeft: "20px"}}>
