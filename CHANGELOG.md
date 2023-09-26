@@ -1,6 +1,12 @@
 
 # Tags
 
+## 1.5.1
+
+Compared to 1.5
+- this fixes building conway Tx where fee would be calculated incorrectly
+- makes things look slightly nicer
+
 ## 1.5.0
   
 #### Conway:
