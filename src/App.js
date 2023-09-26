@@ -39,6 +39,7 @@ import {
     Constitution,
     AnchorDataHash,
     URL,
+    StakeRegistration,
 } from "@emurgo/cardano-serialization-lib-asmjs"
 import "./App.css";
 let Buffer = require('buffer/').Buffer
@@ -845,6 +846,21 @@ export default class App extends React.Component
         this.setState({govActionBuilder : ""});
     }
 
+    buildStakeKeyRegCert = async () => {
+        // Build DRep Registration Certificate
+        const certBuilder = CertificatesBuilder.new();
+
+        if (this.state.unregStakeKeyHashHex === "") {
+            console.log("None of your stake keys are unregistered");
+        }
+
+        const stakeKeyHash = Ed25519KeyHash.from_hex(this.state.unregStakeKeyHashHex);
+        const stakeKeyRegCert = StakeRegistration.new(Credential.from_keyhash(stakeKeyHash));
+        // Add cert to tbuilder
+        certBuilder.add(Certificate.new_stake_registration(stakeKeyRegCert));
+        this.setState({certBuilder : certBuilder});
+    }
+
     // conway alpha
     buildVoteDelegationCert = async (target) => {
         // Build Vote Delegation Certificate
@@ -1076,9 +1092,10 @@ export default class App extends React.Component
         return (
             <div style={{margin: "20px"}}>
 
-                <h1>✨Demos dApp✨</h1>
+                <h1>✨demos dApp✨</h1>
+                <h4>✨v1.5.1✨</h4>
 
-                <input type="checkbox" onChange={this.handleCIP95Select}/> CIP-95?
+                <input type="checkbox" onChange={this.handleCIP95Select}/> Enable CIP-95?
 
                 <div style={{paddingTop: "10px"}}>
                     <div style={{marginBottom: 15}}>Select wallet:</div>
