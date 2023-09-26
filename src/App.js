@@ -1093,7 +1093,7 @@ export default class App extends React.Component
             <div style={{margin: "20px"}}>
 
                 <h1>✨demos dApp✨</h1>
-                <h4>✨v1.5.1✨</h4>
+                <h4>✨v1.5.2✨</h4>
 
                 <input type="checkbox" onChange={this.handleCIP95Select}/> Enable CIP-95?
 
