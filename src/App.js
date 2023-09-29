@@ -118,6 +118,9 @@ export default class App extends React.Component
             voteGovActionIndex: "",
             voteChoice: "",
 
+            // stakeKeyReg
+            stakeKeyReg: "",
+
             supportedExtensions: [],
             enabledExtensions: [],
         }
@@ -520,6 +523,7 @@ export default class App extends React.Component
                         voteGovActionTxHash: "",
                         voteGovActionIndex: "",
                         voteChoice: "",
+                        stakeKeyReg: "",
                         supportedExtensions: [],
                         enabledExtensions: [],
                     });
@@ -567,6 +571,7 @@ export default class App extends React.Component
                             voteGovActionTxHash: "",
                             voteGovActionIndex: "",
                             voteChoice: "",
+                            stakeKeyReg: "",
                             supportedExtensions: [],
                             enabledExtensions: [],
                         });
@@ -602,6 +607,7 @@ export default class App extends React.Component
                     voteGovActionTxHash: "",
                     voteGovActionIndex: "",
                     voteChoice: "",
+                    stakeKeyReg: "",
                     supportedExtensions: "",
                     enabledExtensions: "",
                 });
@@ -739,6 +745,9 @@ export default class App extends React.Component
                 // console.log("Unreg stake Key Hash: ", Buffer.from(stakeKeyHash.to_bytes()).toString('hex'));
                 this.setState({unregStakeKeyHashHex: Buffer.from(stakeKeyHash.to_bytes()).toString('hex')});
 
+                // Set default stake key to register as the first unregistered key
+                this.setState({stakeKeyReg : Buffer.from(stakeKeyHash.to_bytes()).toString('hex')})
+
                 // Make a StakeCredential from the hash
                 // const stakeCredential = Credential.from_keyhash(stakeKeyHash);
                 // console.log("Unreg stake Credential: ", Buffer.from(stakeCredential.to_bytes()).toString('hex'));
@@ -866,11 +875,7 @@ export default class App extends React.Component
     buildStakeKeyRegCert = async () => {
         try {
             const certBuilder = CertificatesBuilder.new();
-
-            if (this.state.unregStakeKeyHashHex === "") {
-                console.log("None of your stake keys are unregistered, cannot register anymore, this will error when submitting");
-            }
-            const stakeKeyHash = Ed25519KeyHash.from_hex(this.state.unregStakeKeyHashHex);
+            const stakeKeyHash = Ed25519KeyHash.from_hex(this.state.stakeKeyReg);
             const stakeKeyRegCert = StakeRegistration.new(Credential.from_keyhash(stakeKeyHash));
             // Add cert to txbuilder
             certBuilder.add(Certificate.new_stake_registration(stakeKeyRegCert));
@@ -1311,7 +1316,25 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="7" title=" 💯 Test Basic Transaction" panel={
+                    <Tab id="7" title="🔑 Register Stake Key" panel={
+                        <div style={{marginLeft: "20px"}}>
+
+                            <FormGroup
+                                helperText=""
+                                label="Stake Key Hash"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({stakeKeyReg : event.target.value})}
+                                    value={this.state.stakeKeyReg}
+                                />
+                            </FormGroup>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildStakeKeyRegCert()) }>Build, .signTx() and .submitTx()</button>
+
+                        </div>
+                    } />
+                    <Tab id="8" title=" 💯 Test Basic Transaction" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(true) }>Build, .signTx() and .submitTx()</button>
