@@ -821,9 +821,7 @@ export default class App extends React.Component
                 this.setState({votingBuilder : ""});
             }
             if(!(this.state.govActionBuilder === "")){
-                console.log("HERE")
                 txBuilder.set_voting_proposal_builder(this.state.govActionBuilder);
-                console.log("HERE")
                 this.setState({govActionBuilder : ""});
             }
 
@@ -1103,7 +1101,7 @@ export default class App extends React.Component
     }
     // fa8633456ad83503e6d62f330c5b34b3857dec2244f0060f641c52bd082629fc
     // https://localhost:3000/
-    
+
     buildNewConstGovAct = async () => {
         try {
             // Create new constitution gov action
