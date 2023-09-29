@@ -1,9 +1,18 @@
-
 # Tags
+
+## 1.5.2
+
+Compared to 1.5.1:
+- Looks nicer
+- Added some basic error handling
+- Added a register stake key option
+- Changed UTxO selection strategy
+
+![](./images/1.5.2.PNG)
 
 ## 1.5.1
 
-Compared to 1.5
+Compared to 1.5.0
 - this fixes building conway Tx where fee would be calculated incorrectly
 - makes things look slightly nicer
 
