@@ -1220,7 +1220,7 @@ export default class App extends React.Component
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildDRepRetirementCert())}>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
-                    <Tab id="5" title="🗳 Vote" panel={
+                    <Tab id="5" title="🗳 Vote [WIP]" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
@@ -1280,7 +1280,7 @@ export default class App extends React.Component
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildVote())}>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
-                    <Tab id="6" title="💡 Governance Action: New Constitution " panel={
+                    <Tab id="6" title="💡 Governance Action: New Constitution [WIP]" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
