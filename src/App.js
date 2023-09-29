@@ -101,7 +101,6 @@ export default class App extends React.Component
             cip95ResultWitness: "",
             cip95MetadataURL: undefined,
             cip95MetadataHash: undefined,
-            buildError: "",
             
             // Conway Alpha
             certBuilder: "",
@@ -514,7 +513,6 @@ export default class App extends React.Component
                         cip95ResultWitness: "",
                         cip95MetadataURL: "",
                         cip95MetadataHash: "",
-                        buildError: "",
                         certBuilder: "",
                         votingBuilder: "",
                         govActionBuilder: "",
@@ -565,7 +563,6 @@ export default class App extends React.Component
                             govActionBuilder: "",
                             cip95MetadataURL: "",
                             cip95MetadataHash: "",
-                            buildError: "",
                             voteDelegationTarget: "",
                             voteGovActionTxHash: "",
                             voteGovActionIndex: "",
@@ -599,7 +596,6 @@ export default class App extends React.Component
                     cip95ResultWitness: "",
                     cip95MetadataURL: "",
                     cip95MetadataHash: "",
-                    buildError: "",
                     certBuilder: "",
                     votingBuilder: "",
                     voteDelegationTarget: "",
