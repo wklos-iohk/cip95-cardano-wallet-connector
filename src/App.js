@@ -40,6 +40,7 @@ import {
     AnchorDataHash,
     URL,
     StakeRegistration,
+    StakeDeregistration,
 } from "@emurgo/cardano-serialization-lib-asmjs"
 import "./App.css";
 let Buffer = require('buffer/').Buffer
@@ -118,8 +119,8 @@ export default class App extends React.Component
             voteGovActionIndex: "",
             voteChoice: "",
 
-            // stakeKeyReg
             stakeKeyReg: "",
+            stakeKeyUnreg: "",
 
             supportedExtensions: [],
             enabledExtensions: [],
@@ -524,6 +525,7 @@ export default class App extends React.Component
                         voteGovActionIndex: "",
                         voteChoice: "",
                         stakeKeyReg: "",
+                        stakeKeyUnreg: "",
                         supportedExtensions: [],
                         enabledExtensions: [],
                     });
@@ -572,6 +574,7 @@ export default class App extends React.Component
                             voteGovActionIndex: "",
                             voteChoice: "",
                             stakeKeyReg: "",
+                            stakeKeyUnreg: "",
                             supportedExtensions: [],
                             enabledExtensions: [],
                         });
@@ -608,6 +611,7 @@ export default class App extends React.Component
                     voteGovActionIndex: "",
                     voteChoice: "",
                     stakeKeyReg: "",
+                    stakeKeyUnreg: "",
                     supportedExtensions: "",
                     enabledExtensions: "",
                 });
@@ -702,6 +706,9 @@ export default class App extends React.Component
                 const stakeKeyHash = ((PublicKey.from_bytes(stakeKeyBytes)).hash());
                 // console.log("Reg stake Key Hash: ", Buffer.from(stakeKeyHash.to_bytes()).toString('hex'));
                 this.setState({regStakeKeyHashHex: Buffer.from(stakeKeyHash.to_bytes()).toString('hex')});
+
+                // Set default stake key to register as the first unregistered key
+                this.setState({stakeKeyUnreg : Buffer.from(stakeKeyHash.to_bytes()).toString('hex')})
 
                 // Make a StakeCredential from the hash
                 // const stakeCredential = Credential.from_keyhash(stakeKeyHash);
@@ -883,6 +890,21 @@ export default class App extends React.Component
             const stakeKeyRegCert = StakeRegistration.new(Credential.from_keyhash(stakeKeyHash));
             // Add cert to txbuilder
             certBuilder.add(Certificate.new_stake_registration(stakeKeyRegCert));
+            this.setState({certBuilder : certBuilder});
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
+    buildStakeKeyUnregCert = async () => {
+        try {
+            const certBuilder = CertificatesBuilder.new();
+            const stakeKeyHash = Ed25519KeyHash.from_hex(this.state.stakeKeyUnreg);
+            const stakeKeyRegCert = StakeDeregistration.new(Credential.from_keyhash(stakeKeyHash));
+            // Add cert to txbuilder
+            certBuilder.add(Certificate.new_stake_deregistration(stakeKeyRegCert));
             this.setState({certBuilder : certBuilder});
             return true;
         } catch (err) {
@@ -1338,7 +1360,25 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="8" title=" 💯 Test Basic Transaction" panel={
+                    <Tab id="8" title="🚫🔑 Unregister Stake Key" panel={
+                        <div style={{marginLeft: "20px"}}>
+
+                            <FormGroup
+                                helperText=""
+                                label="Stake Key Hash"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({stakeKeyUnreg : event.target.value})}
+                                    value={this.state.stakeKeyUnreg}
+                                />
+                            </FormGroup>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildStakeKeyUnregCert()) }>Build, .signTx() and .submitTx()</button>
+
+                        </div>
+                    } />
+                    <Tab id="9" title=" 💯 Test Basic Transaction" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(true) }>Build, .signTx() and .submitTx()</button>
