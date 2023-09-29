@@ -101,6 +101,7 @@ export default class App extends React.Component
             cip95ResultWitness: "",
             cip95MetadataURL: undefined,
             cip95MetadataHash: undefined,
+            buildError: "",
             
             // Conway Alpha
             certBuilder: "",
@@ -460,7 +461,7 @@ export default class App extends React.Component
 
     checkIfCIP95MethodsAvailable = async () => {
         const hasCIP95Methods =( this.API.cip95.hasOwnProperty('getPubDRepKey'));
-        console.log(`Has CIP95 .getPubDRepKey(): ${hasCIP95Methods}`)
+        // console.log(`Has CIP95 .getPubDRepKey(): ${hasCIP95Methods}`)
         return hasCIP95Methods;
     }
     /**
@@ -513,6 +514,7 @@ export default class App extends React.Component
                         cip95ResultWitness: "",
                         cip95MetadataURL: "",
                         cip95MetadataHash: "",
+                        buildError: "",
                         certBuilder: "",
                         votingBuilder: "",
                         govActionBuilder: "",
@@ -563,6 +565,7 @@ export default class App extends React.Component
                             govActionBuilder: "",
                             cip95MetadataURL: "",
                             cip95MetadataHash: "",
+                            buildError: "",
                             voteDelegationTarget: "",
                             voteGovActionTxHash: "",
                             voteGovActionIndex: "",
@@ -596,6 +599,7 @@ export default class App extends React.Component
                     cip95ResultWitness: "",
                     cip95MetadataURL: "",
                     cip95MetadataHash: "",
+                    buildError: "",
                     certBuilder: "",
                     votingBuilder: "",
                     voteDelegationTarget: "",
@@ -776,83 +780,91 @@ export default class App extends React.Component
         this.setState({selectedCIP95});
     }
 
-    buildSubmitConwayTx = async () => {
-        // Initialize builder with protocol parameters
-        const txBuilder = await this.initTransactionBuilder();
+    buildSubmitConwayTx = async (builderSuccess) => {
+        try {  
 
-        // Set the certificate to the current certbuilder
-        if(!(this.state.certBuilder === "")){
-            txBuilder.set_certs_builder(this.state.certBuilder);
-            this.setState({certBuilder : ""});
+            if (!(await builderSuccess)){
+                throw "Error before building Tx, aborting Tx build."
+            }
+
+            // Initialize builder with protocol parameters
+            const txBuilder = await this.initTransactionBuilder();
+
+            // Set the certificate to the current certbuilder
+            if(!(this.state.certBuilder === "")){
+                txBuilder.set_certs_builder(this.state.certBuilder);
+                this.setState({certBuilder : ""});
+            }
+            if(!(this.state.votingBuilder === "")){
+                txBuilder.set_voting_builder(this.state.votingBuilder);
+                this.setState({votingBuilder : ""});
+            }
+            if(!(this.state.govActionBuilder === "")){
+                txBuilder.set_voting_proposal_builder(this.state.govActionBuilder);
+                this.setState({govActionBuilder : ""});
+            }
+
+            // Set output and change addresses to those of our wallet
+            const shelleyOutputAddress = Address.from_bech32(this.state.usedAddress);
+            const shelleyChangeAddress = Address.from_bech32(this.state.changeAddress);
+            
+            // Add output of 1 ADA to the address of our wallet
+            txBuilder.add_output(
+                TransactionOutput.new(
+                    shelleyOutputAddress,
+                    Value.new(BigNum.from_str("1000000"))
+                ),
+            );
+            // Find the available UTXOs in the wallet and use them as Inputs for the transaction
+            const txUnspentOutputs = await this.getTxUnspentOutputs();
+            // Use UTxO selection strategy 2
+            txBuilder.add_inputs_from(txUnspentOutputs, 2)
+            // Set change address, incase too much ADA provided for fee
+            txBuilder.add_change_if_needed(shelleyChangeAddress)
+
+            // Build transaction body
+            const txBody = txBuilder.build();
+
+            // Make a full transaction, passing in empty witness set
+            const transactionWitnessSet = TransactionWitnessSet.new();
+            const tx = Transaction.new(
+                txBody,
+                TransactionWitnessSet.from_bytes(transactionWitnessSet.to_bytes()),
+            );
+
+            // console.log("UnSigned Tx: ", tx.to_json());
+
+            // Ask wallet to to provide signature (witnesses) for the transaction
+            let txVkeyWitnesses;
+            txVkeyWitnesses = await this.API.signTx(Buffer.from(tx.to_bytes(), "utf8").toString("hex"), true);
+            // Create witness set object using the witnesses provided by the wallet
+            txVkeyWitnesses = TransactionWitnessSet.from_bytes(Buffer.from(txVkeyWitnesses, "hex"));
+            transactionWitnessSet.set_vkeys(txVkeyWitnesses.vkeys());
+            // Build transaction with witnesses
+            const signedTx = Transaction.new(
+                tx.body(),
+                transactionWitnessSet,
+            );
+            
+            console.log("SignedTx: ", Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"))
+            // console.log("Signed Tx: ", signedTx.to_json());
+            
+            // Submit built signed transaction to chain, via wallet's submit transaction endpoint
+            const result = await this.API.submitTx(Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"));
+            console.log("Built and submitted transaction: ", result)
+            // Set results so they can be rendered
+            const cip95ResultTx = Buffer.from(signedTx.to_bytes(), "utf8").toString("hex");
+            const cip95ResultHash = result;
+            const cip95ResultWitness = Buffer.from(txVkeyWitnesses.to_bytes(), "utf8").toString("hex");
+            this.setState({cip95ResultTx});
+            this.setState({cip95ResultHash});
+            this.setState({cip95ResultWitness});
+
+        } catch (err) {
+            console.log("Error during build, sign and submit transaction");
+            console.log(err);
+            await this.refreshData();
         }
-        if(!(this.state.votingBuilder === "")){
-            txBuilder.set_voting_builder(this.state.votingBuilder);
-            this.setState({votingBuilder : ""});
-        }
-        if(!(this.state.govActionBuilder === "")){
-            txBuilder.set_voting_proposal_builder(this.state.govActionBuilder);
-            this.setState({govActionBuilder : ""});
-        }
-
-        // Set output and change addresses to those of our wallet
-        const shelleyOutputAddress = Address.from_bech32(this.state.usedAddress);
-        const shelleyChangeAddress = Address.from_bech32(this.state.changeAddress);
-        
-        // Add output of 1 ADA to the address of our wallet
-        txBuilder.add_output(
-            TransactionOutput.new(
-                shelleyOutputAddress,
-                Value.new(BigNum.from_str("1000000"))
-            ),
-        );
-        // Find the available UTXOs in the wallet and use them as Inputs for the transaction
-        const txUnspentOutputs = await this.getTxUnspentOutputs();
-        // Use UTxO selection strategy 2
-        txBuilder.add_inputs_from(txUnspentOutputs, 2)
-        // Set change address, incase too much ADA provided for fee
-        txBuilder.add_change_if_needed(shelleyChangeAddress)
-
-        // Build transaction body
-        const txBody = txBuilder.build();
-
-        // Make a full transaction, passing in empty witness set
-        const transactionWitnessSet = TransactionWitnessSet.new();
-        const tx = Transaction.new(
-            txBody,
-            TransactionWitnessSet.from_bytes(transactionWitnessSet.to_bytes()),
-        );
-
-        // console.log("UnSigned Tx: ", tx.to_json());
-
-        // Ask wallet to to provide signature (witnesses) for the transaction
-        let txVkeyWitnesses;
-        txVkeyWitnesses = await this.API.signTx(Buffer.from(tx.to_bytes(), "utf8").toString("hex"), true);
-        // Create witness set object using the witnesses provided by the wallet
-        txVkeyWitnesses = TransactionWitnessSet.from_bytes(Buffer.from(txVkeyWitnesses, "hex"));
-        transactionWitnessSet.set_vkeys(txVkeyWitnesses.vkeys());
-        // Build transaction with witnesses
-        const signedTx = Transaction.new(
-            tx.body(),
-            transactionWitnessSet,
-        );
-        
-        console.log("SignedTx: ", Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"))
-        // console.log("Signed Tx: ", signedTx.to_json());
-        
-        // Submit built signed transaction to chain, via wallet's submit transaction endpoint
-        const result = await this.API.submitTx(Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"));
-        console.log("Built and submitted transaction: ", result)
-        // Set results so they can be rendered
-        const cip95ResultTx = Buffer.from(signedTx.to_bytes(), "utf8").toString("hex");
-        const cip95ResultHash = result;
-        const cip95ResultWitness = Buffer.from(txVkeyWitnesses.to_bytes(), "utf8").toString("hex");
-        this.setState({cip95ResultTx});
-        this.setState({cip95ResultHash});
-        this.setState({cip95ResultWitness});
-        
-        // TODO move these from here
-        this.setState({cip95MetadataURL : ""});
-        this.setState({cip95MetadataHash : ""});
     }
 
     buildStakeKeyRegCert = async () => {
@@ -867,8 +879,10 @@ export default class App extends React.Component
             // Add cert to txbuilder
             certBuilder.add(Certificate.new_stake_registration(stakeKeyRegCert));
             this.setState({certBuilder : certBuilder});
+            return true;
         } catch (err) {
             console.log(err);
+            return false;
         }
     }
 
@@ -902,8 +916,10 @@ export default class App extends React.Component
             // add cert to txbuilder
             certBuilder.add(Certificate.new_vote_delegation(voteDelegationCert));
             this.setState({certBuilder : certBuilder});
+            return true;
         } catch (err) {
             console.log(err);
+            return false;
         }
     }
 
@@ -938,8 +954,10 @@ export default class App extends React.Component
             // add cert to txbuilder
             certBuilder.add(Certificate.new_drep_registration(dRepRegCert));
             this.setState({certBuilder : certBuilder});
+            return true;
         } catch (err) {
             console.log(err);
+            return false;
         }
     }
 
@@ -972,28 +990,32 @@ export default class App extends React.Component
             // add cert to tbuilder
             certBuilder.add(Certificate.new_drep_update(dRepUpdateCert));
             this.setState({certBuilder : certBuilder});
+            return true;
         } catch (err) {
             console.log(err);
+            return false;
         }
     }
 
     buildDRepRetirementCert = async () => {
         try {
-        // Build DRep Registration Certificate
-        const certBuilder = CertificatesBuilder.new();
-        // Get wallet's DRep key
-        const dRepKeyHash = Ed25519KeyHash.from_hex(this.state.dRepID);
-        const dRepCred = Credential.from_keyhash(dRepKeyHash);
-    
-        const dRepRetirementCert = DrepDeregistration.new(
-            dRepCred,
-            BigNum.from_str("0"),
-        );
-        // add cert to tbuilder
-        certBuilder.add(Certificate.new_drep_deregistration(dRepRetirementCert));
-        this.setState({certBuilder : certBuilder});
+            // Build DRep Registration Certificate
+            const certBuilder = CertificatesBuilder.new();
+            // Get wallet's DRep key
+            const dRepKeyHash = Ed25519KeyHash.from_hex(this.state.dRepID);
+            const dRepCred = Credential.from_keyhash(dRepKeyHash);
+        
+            const dRepRetirementCert = DrepDeregistration.new(
+                dRepCred,
+                BigNum.from_str("0"),
+            );
+            // add cert to tbuilder
+            certBuilder.add(Certificate.new_drep_deregistration(dRepRetirementCert));
+            this.setState({certBuilder : certBuilder});
+            return true;
         } catch (err) {
             console.log(err);
+            return false;
         }
     }
 
@@ -1030,8 +1052,11 @@ export default class App extends React.Component
             const votingBuilder = VotingBuilder.new();
             votingBuilder.add(voter, govActionId, votingProcedure);
             this.setState({votingBuilder});
+            
+            return true;
         } catch (err) {
             console.log(err);
+            return false;
         }
     }
 
@@ -1045,8 +1070,10 @@ export default class App extends React.Component
             const govActionBuilder = VotingProposalBuilder.new();
             govActionBuilder.add(govAct);
             this.setState({govActionBuilder});
+            return true;
         } catch (err) {
             console.log(err);
+            return false;
         }
     }
 
@@ -1291,7 +1318,7 @@ export default class App extends React.Component
                     <Tab id="7" title=" 💯 Test Basic Transaction" panel={
                         <div style={{marginLeft: "20px"}}>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx() }>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(true) }>Build, .signTx() and .submitTx()</button>
 
                         </div>
                     } />
