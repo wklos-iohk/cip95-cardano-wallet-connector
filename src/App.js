@@ -1277,7 +1277,7 @@ export default class App extends React.Component
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildDRepRetirementCert())}>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
-                    <Tab id="5" title="🗳 Vote [WIP]" panel={
+                    <Tab id="5" title="🗳 Vote" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup

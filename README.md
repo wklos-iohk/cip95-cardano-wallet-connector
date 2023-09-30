@@ -22,9 +22,10 @@ Compared to 1.5.1:
 
 ### 1.5.3 (In progress):
 - Added stake key unreg
-- Better handling of votes and Gov actions
-- signData
+- Fixed and tested vote submission
+- Fixed and tested Gov action submission
 - CSL Alpha v7
+- signData
 
 ## To Develop
 
