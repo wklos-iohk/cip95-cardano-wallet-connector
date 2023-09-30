@@ -23,6 +23,7 @@ Compared to 1.5.1:
 ### 1.5.3 (In progress):
 - Better handling of votes and Gov actions
 - signData
+- CSL Alpha v7
 
 ## To Develop
 
