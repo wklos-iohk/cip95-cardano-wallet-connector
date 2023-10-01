@@ -40,6 +40,7 @@ import {
     AnchorDataHash,
     URL,
     StakeRegistration,
+    StakeDeregistration,
 } from "@emurgo/cardano-serialization-lib-asmjs"
 import "./App.css";
 let Buffer = require('buffer/').Buffer
@@ -118,8 +119,11 @@ export default class App extends React.Component
             voteGovActionIndex: "",
             voteChoice: "",
 
-            // stakeKeyReg
             stakeKeyReg: "",
+            stakeKeyUnreg: "",
+
+            constURL: "",
+            constHash: "",
 
             supportedExtensions: [],
             enabledExtensions: [],
@@ -160,7 +164,7 @@ export default class App extends React.Component
             priceStep: 0.0000721,
             coinsPerUtxoWord: "34482",
             // Conway Alpha
-            votingProposalDeposit: "500000000",
+            votingProposalDeposit: "0",
         }
 
         this.pollWallets = this.pollWallets.bind(this);
@@ -524,6 +528,9 @@ export default class App extends React.Component
                         voteGovActionIndex: "",
                         voteChoice: "",
                         stakeKeyReg: "",
+                        stakeKeyUnreg: "",
+                        constURL: "",
+                        constHash: "",
                         supportedExtensions: [],
                         enabledExtensions: [],
                     });
@@ -572,6 +579,9 @@ export default class App extends React.Component
                             voteGovActionIndex: "",
                             voteChoice: "",
                             stakeKeyReg: "",
+                            constURL: "",
+                            constHash: "",
+                            stakeKeyUnreg: "",
                             supportedExtensions: [],
                             enabledExtensions: [],
                         });
@@ -608,6 +618,9 @@ export default class App extends React.Component
                     voteGovActionIndex: "",
                     voteChoice: "",
                     stakeKeyReg: "",
+                    constURL: "",
+                    constHash: "",
+                    stakeKeyUnreg: "",
                     supportedExtensions: "",
                     enabledExtensions: "",
                 });
@@ -702,6 +715,9 @@ export default class App extends React.Component
                 const stakeKeyHash = ((PublicKey.from_bytes(stakeKeyBytes)).hash());
                 // console.log("Reg stake Key Hash: ", Buffer.from(stakeKeyHash.to_bytes()).toString('hex'));
                 this.setState({regStakeKeyHashHex: Buffer.from(stakeKeyHash.to_bytes()).toString('hex')});
+
+                // Set default stake key to register as the first unregistered key
+                this.setState({stakeKeyUnreg : Buffer.from(stakeKeyHash.to_bytes()).toString('hex')})
 
                 // Make a StakeCredential from the hash
                 // const stakeCredential = Credential.from_keyhash(stakeKeyHash);
@@ -813,17 +829,25 @@ export default class App extends React.Component
             const shelleyOutputAddress = Address.from_bech32(this.state.usedAddress);
             const shelleyChangeAddress = Address.from_bech32(this.state.changeAddress);
             
-            // Add output of 1 ADA to the address of our wallet
+            // Add output of 3 ADA to the address of our wallet
+            // 3 is used incase of Stake key deposit refund
             txBuilder.add_output(
                 TransactionOutput.new(
                     shelleyOutputAddress,
-                    Value.new(BigNum.from_str("1000000"))
+                    Value.new(BigNum.from_str("3000000"))
                 ),
             );
             // Find the available UTXOs in the wallet and use them as Inputs for the transaction
             const txUnspentOutputs = await this.getTxUnspentOutputs();
-            // Use UTxO selection strategy 2
-            txBuilder.add_inputs_from(txUnspentOutputs, 2)
+            // Use UTxO selection strategy 2 if 1 not possible
+            try {
+                txBuilder.add_inputs_from(txUnspentOutputs, 1)
+            } catch (err) {
+                console.log("UTxO selection strategy 1 failed, trying strategy 2");
+                console.log(err);
+            } finally {
+                txBuilder.add_inputs_from(txUnspentOutputs, 2)
+            }
             // Set change address, incase too much ADA provided for fee
             txBuilder.add_change_if_needed(shelleyChangeAddress)
 
@@ -879,6 +903,21 @@ export default class App extends React.Component
             const stakeKeyRegCert = StakeRegistration.new(Credential.from_keyhash(stakeKeyHash));
             // Add cert to txbuilder
             certBuilder.add(Certificate.new_stake_registration(stakeKeyRegCert));
+            this.setState({certBuilder : certBuilder});
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
+    buildStakeKeyUnregCert = async () => {
+        try {
+            const certBuilder = CertificatesBuilder.new();
+            const stakeKeyHash = Ed25519KeyHash.from_hex(this.state.stakeKeyUnreg);
+            const stakeKeyUnregCert = StakeDeregistration.new(Credential.from_keyhash(stakeKeyHash));
+            // Add cert to txbuilder
+            certBuilder.add(Certificate.new_stake_deregistration(stakeKeyUnregCert));
             this.setState({certBuilder : certBuilder});
             return true;
         } catch (err) {
@@ -1022,7 +1061,7 @@ export default class App extends React.Component
 
     buildVote = async () => {
         try {
-            // Get wallet's DRep key
+            // Use wallet's DRep key
             const dRepKeyHash = Ed25519KeyHash.from_hex(this.state.dRepID);
             // Use connected wallet as voter
             const voter = Voter.new_drep(Credential.from_keyhash(dRepKeyHash))
@@ -1063,12 +1102,23 @@ export default class App extends React.Component
 
     buildNewConstGovAct = async () => {
         try {
-            const dataHash = AnchorDataHash.from_hex("fa8633456ad83503e6d62f330c5b34b3857dec2244f0060f641c52bd082629fc");
-            const url = URL.new(this.state.cip95MetadataURL);
-            const anchor = Anchor.new(url, dataHash);
-            const constChangeGovAct = NewConstitutionProposal.new(Constitution.new(anchor));
-            const govAct = VotingProposal.new_new_constitution_proposal(constChangeGovAct);
-            const govActionBuilder = VotingProposalBuilder.new();
+            // Create new constitution gov action
+            const constURL = URL.new(this.state.constURL);
+            const constDataHash = AnchorDataHash.from_hex(this.state.constHash);
+            const constAnchor = Anchor.new(constURL, constDataHash);
+            const constChangeGovAct = NewConstitutionProposal.new(Constitution.new(constAnchor));
+
+            // Add anchor if provided
+            let govAct;
+            if (!(this.state.cip95MetadataURL === "" && this.state.cip95MetadataHash === "")) {
+                // nothing as it apprea
+                // Reset the anchor state
+                this.setState({cip95MetadataURL : ""});
+                this.setState({cip95MetadataHash : ""});
+            } else {
+                govAct = VotingProposal.new_new_constitution_proposal(constChangeGovAct);
+            }
+            const govActionBuilder = (VotingProposalBuilder.new())
             govActionBuilder.add(govAct);
             this.setState({govActionBuilder});
             return true;
@@ -1089,7 +1139,7 @@ export default class App extends React.Component
             <div style={{margin: "20px"}}>
 
                 <h1>✨demos dApp✨</h1>
-                <h4>✨v1.5.2✨</h4>
+                <h4>✨v1.5.3✨</h4>
 
                 <input type="checkbox" onChange={this.handleCIP95Select}/> Enable CIP-95?
 
@@ -1225,7 +1275,7 @@ export default class App extends React.Component
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildDRepRetirementCert())}>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
-                    <Tab id="5" title="🗳 Vote [WIP]" panel={
+                    <Tab id="5" title="🗳 Vote" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
@@ -1289,27 +1339,22 @@ export default class App extends React.Component
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
-                                helperText=""
-                                label="Constitution URL"
+                                label="New Constitution URL"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
-                                    defaultValue={'https://my-constitution-url.com'}
-
+                                    onChange={(event) => this.setState({constURL: event.target.value})}
                                 />
                             </FormGroup>
 
                             <FormGroup
-                                helperText=""
-                                label="Constituion Hash"
+                                label="New Constituion Hash"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
-                                    defaultValue={'fa8633456ad83503e6d62f330c5b34b3857dec2244f0060f641c52bd082629fc'}
+                                    onChange={(event) => this.setState({constHash: event.target.value})}
                                 />
                             </FormGroup>
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildNewConstGovAct()) }>Build, .signTx() and .submitTx()</button>
@@ -1334,7 +1379,25 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="8" title=" 💯 Test Basic Transaction" panel={
+                    <Tab id="8" title="🚫🔑 Unregister Stake Key" panel={
+                        <div style={{marginLeft: "20px"}}>
+
+                            <FormGroup
+                                helperText=""
+                                label="Stake Key Hash"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({stakeKeyUnreg : event.target.value})}
+                                    value={this.state.stakeKeyUnreg}
+                                />
+                            </FormGroup>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildStakeKeyUnregCert()) }>Build, .signTx() and .submitTx()</button>
+
+                        </div>
+                    } />
+                    <Tab id="9" title=" 💯 Test Basic Transaction" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(true) }>Build, .signTx() and .submitTx()</button>

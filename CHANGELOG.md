@@ -1,5 +1,14 @@
 # Tags
 
+### 1.5.3
+
+- Added stake key unreg
+- Fixed and tested vote submission
+- Changed UTxO selection strategy to prioritize 1
+- CSL Alpha v7
+
+![](./images/1.5.3.PNG)
+
 ## 1.5.2
 
 Compared to 1.5.1:

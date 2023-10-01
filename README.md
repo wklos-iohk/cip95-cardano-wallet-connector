@@ -13,16 +13,15 @@ Currently corresponding CIP-95 commit: [6153866](https://github.com/cardano-foun
 
 See [CHANGELOG.md](./CHANGELOG.md) for feature details on older tags.
 
-### 1.5.2
-Compared to 1.5.1:
-- Looks nicer
-- Added some basic error handling
-- Added a register stake key option
-- Changed UTxO selection strategy
+### 1.5.3
+- Added stake key unreg
+- Fixed and tested vote submission
+- Changed UTxO selection strategy to prioritize 1
+- CSL Alpha v7
 
-### 1.5.3 (In progress):
-- Better handling of votes and Gov actions
+### 1.5.4 (In progress)
 - signData
+- Fixed and tested Gov action submission
 
 ## To Develop
 
