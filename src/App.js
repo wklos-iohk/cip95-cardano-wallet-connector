@@ -1099,8 +1099,6 @@ export default class App extends React.Component
             return false;
         }
     }
-    // fa8633456ad83503e6d62f330c5b34b3857dec2244f0060f641c52bd082629fc
-    // https://localhost:3000/
 
     buildNewConstGovAct = async () => {
         try {
