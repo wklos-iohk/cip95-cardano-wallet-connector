@@ -122,6 +122,9 @@ export default class App extends React.Component
             stakeKeyReg: "",
             stakeKeyUnreg: "",
 
+            constURL: "",
+            constHash: "",
+
             supportedExtensions: [],
             enabledExtensions: [],
         }
@@ -161,7 +164,7 @@ export default class App extends React.Component
             priceStep: 0.0000721,
             coinsPerUtxoWord: "34482",
             // Conway Alpha
-            votingProposalDeposit: "500000000",
+            votingProposalDeposit: "0",
         }
 
         this.pollWallets = this.pollWallets.bind(this);
@@ -526,6 +529,8 @@ export default class App extends React.Component
                         voteChoice: "",
                         stakeKeyReg: "",
                         stakeKeyUnreg: "",
+                        constURL: "",
+                        constHash: "",
                         supportedExtensions: [],
                         enabledExtensions: [],
                     });
@@ -574,6 +579,8 @@ export default class App extends React.Component
                             voteGovActionIndex: "",
                             voteChoice: "",
                             stakeKeyReg: "",
+                            constURL: "",
+                            constHash: "",
                             stakeKeyUnreg: "",
                             supportedExtensions: [],
                             enabledExtensions: [],
@@ -611,6 +618,8 @@ export default class App extends React.Component
                     voteGovActionIndex: "",
                     voteChoice: "",
                     stakeKeyReg: "",
+                    constURL: "",
+                    constHash: "",
                     stakeKeyUnreg: "",
                     supportedExtensions: "",
                     enabledExtensions: "",
@@ -1052,7 +1061,7 @@ export default class App extends React.Component
 
     buildVote = async () => {
         try {
-            // Get wallet's DRep key
+            // Use wallet's DRep key
             const dRepKeyHash = Ed25519KeyHash.from_hex(this.state.dRepID);
             // Use connected wallet as voter
             const voter = Voter.new_drep(Credential.from_keyhash(dRepKeyHash))
@@ -1090,15 +1099,28 @@ export default class App extends React.Component
             return false;
         }
     }
+    // fa8633456ad83503e6d62f330c5b34b3857dec2244f0060f641c52bd082629fc
+    // https://localhost:3000/
 
     buildNewConstGovAct = async () => {
         try {
-            const dataHash = AnchorDataHash.from_hex("fa8633456ad83503e6d62f330c5b34b3857dec2244f0060f641c52bd082629fc");
-            const url = URL.new(this.state.cip95MetadataURL);
-            const anchor = Anchor.new(url, dataHash);
-            const constChangeGovAct = NewConstitutionProposal.new(Constitution.new(anchor));
-            const govAct = VotingProposal.new_new_constitution_proposal(constChangeGovAct);
-            const govActionBuilder = VotingProposalBuilder.new();
+            // Create new constitution gov action
+            const constURL = URL.new(this.state.constURL);
+            const constDataHash = AnchorDataHash.from_hex(this.state.constHash);
+            const constAnchor = Anchor.new(constURL, constDataHash);
+            const constChangeGovAct = NewConstitutionProposal.new(Constitution.new(constAnchor));
+
+            // Add anchor if provided
+            let govAct;
+            if (!(this.state.cip95MetadataURL === "" && this.state.cip95MetadataHash === "")) {
+                // nothing as it apprea
+                // Reset the anchor state
+                this.setState({cip95MetadataURL : ""});
+                this.setState({cip95MetadataHash : ""});
+            } else {
+                govAct = VotingProposal.new_new_constitution_proposal(constChangeGovAct);
+            }
+            const govActionBuilder = (VotingProposalBuilder.new())
             govActionBuilder.add(govAct);
             this.setState({govActionBuilder});
             return true;
@@ -1255,7 +1277,7 @@ export default class App extends React.Component
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildDRepRetirementCert())}>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
-                    <Tab id="5" title="🗳 Vote [WIP]" panel={
+                    <Tab id="5" title="🗳 Vote" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
@@ -1319,27 +1341,22 @@ export default class App extends React.Component
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
-                                helperText=""
-                                label="Constitution URL"
+                                label="New Constitution URL"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
-                                    defaultValue={'https://my-constitution-url.com'}
-
+                                    onChange={(event) => this.setState({constURL: event.target.value})}
                                 />
                             </FormGroup>
 
                             <FormGroup
-                                helperText=""
-                                label="Constituion Hash"
+                                label="New Constituion Hash"
                             >
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
-                                    defaultValue={'fa8633456ad83503e6d62f330c5b34b3857dec2244f0060f641c52bd082629fc'}
+                                    onChange={(event) => this.setState({constHash: event.target.value})}
                                 />
                             </FormGroup>
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildNewConstGovAct()) }>Build, .signTx() and .submitTx()</button>
