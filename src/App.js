@@ -820,11 +820,12 @@ export default class App extends React.Component
             const shelleyOutputAddress = Address.from_bech32(this.state.usedAddress);
             const shelleyChangeAddress = Address.from_bech32(this.state.changeAddress);
             
-            // Add output of 1 ADA to the address of our wallet
+            // Add output of 3 ADA to the address of our wallet
+            // 3 is used incase of Stake key deposit refund
             txBuilder.add_output(
                 TransactionOutput.new(
                     shelleyOutputAddress,
-                    Value.new(BigNum.from_str("1000000"))
+                    Value.new(BigNum.from_str("3000000"))
                 ),
             );
             // Find the available UTXOs in the wallet and use them as Inputs for the transaction
@@ -832,6 +833,9 @@ export default class App extends React.Component
             // Use UTxO selection strategy 2 if 1 not possible
             try {
                 txBuilder.add_inputs_from(txUnspentOutputs, 1)
+            } catch (err) {
+                console.log("UTxO selection strategy 1 failed, trying strategy 2");
+                console.log(err);
             } finally {
                 txBuilder.add_inputs_from(txUnspentOutputs, 2)
             }
@@ -902,9 +906,9 @@ export default class App extends React.Component
         try {
             const certBuilder = CertificatesBuilder.new();
             const stakeKeyHash = Ed25519KeyHash.from_hex(this.state.stakeKeyUnreg);
-            const stakeKeyRegCert = StakeDeregistration.new(Credential.from_keyhash(stakeKeyHash));
+            const stakeKeyUnregCert = StakeDeregistration.new(Credential.from_keyhash(stakeKeyHash));
             // Add cert to txbuilder
-            certBuilder.add(Certificate.new_stake_deregistration(stakeKeyRegCert));
+            certBuilder.add(Certificate.new_stake_deregistration(stakeKeyUnregCert));
             this.setState({certBuilder : certBuilder});
             return true;
         } catch (err) {
