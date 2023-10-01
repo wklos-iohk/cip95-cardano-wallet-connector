@@ -40,6 +40,7 @@ import {
     AnchorDataHash,
     URL,
     StakeRegistration,
+    StakeDeregistration,
 } from "@emurgo/cardano-serialization-lib-asmjs"
 import "./App.css";
 let Buffer = require('buffer/').Buffer
@@ -118,8 +119,8 @@ export default class App extends React.Component
             voteGovActionIndex: "",
             voteChoice: "",
 
-            // stakeKeyReg
             stakeKeyReg: "",
+            stakeKeyUnreg: "",
 
             supportedExtensions: [],
             enabledExtensions: [],
@@ -524,6 +525,7 @@ export default class App extends React.Component
                         voteGovActionIndex: "",
                         voteChoice: "",
                         stakeKeyReg: "",
+                        stakeKeyUnreg: "",
                         supportedExtensions: [],
                         enabledExtensions: [],
                     });
@@ -572,6 +574,7 @@ export default class App extends React.Component
                             voteGovActionIndex: "",
                             voteChoice: "",
                             stakeKeyReg: "",
+                            stakeKeyUnreg: "",
                             supportedExtensions: [],
                             enabledExtensions: [],
                         });
@@ -608,6 +611,7 @@ export default class App extends React.Component
                     voteGovActionIndex: "",
                     voteChoice: "",
                     stakeKeyReg: "",
+                    stakeKeyUnreg: "",
                     supportedExtensions: "",
                     enabledExtensions: "",
                 });
@@ -702,6 +706,9 @@ export default class App extends React.Component
                 const stakeKeyHash = ((PublicKey.from_bytes(stakeKeyBytes)).hash());
                 // console.log("Reg stake Key Hash: ", Buffer.from(stakeKeyHash.to_bytes()).toString('hex'));
                 this.setState({regStakeKeyHashHex: Buffer.from(stakeKeyHash.to_bytes()).toString('hex')});
+
+                // Set default stake key to register as the first unregistered key
+                this.setState({stakeKeyUnreg : Buffer.from(stakeKeyHash.to_bytes()).toString('hex')})
 
                 // Make a StakeCredential from the hash
                 // const stakeCredential = Credential.from_keyhash(stakeKeyHash);
@@ -813,11 +820,12 @@ export default class App extends React.Component
             const shelleyOutputAddress = Address.from_bech32(this.state.usedAddress);
             const shelleyChangeAddress = Address.from_bech32(this.state.changeAddress);
             
-            // Add output of 1 ADA to the address of our wallet
+            // Add output of 3 ADA to the address of our wallet
+            // 3 is used incase of Stake key deposit refund
             txBuilder.add_output(
                 TransactionOutput.new(
                     shelleyOutputAddress,
-                    Value.new(BigNum.from_str("1000000"))
+                    Value.new(BigNum.from_str("3000000"))
                 ),
             );
             // Find the available UTXOs in the wallet and use them as Inputs for the transaction
@@ -825,6 +833,9 @@ export default class App extends React.Component
             // Use UTxO selection strategy 2 if 1 not possible
             try {
                 txBuilder.add_inputs_from(txUnspentOutputs, 1)
+            } catch (err) {
+                console.log("UTxO selection strategy 1 failed, trying strategy 2");
+                console.log(err);
             } finally {
                 txBuilder.add_inputs_from(txUnspentOutputs, 2)
             }
@@ -883,6 +894,21 @@ export default class App extends React.Component
             const stakeKeyRegCert = StakeRegistration.new(Credential.from_keyhash(stakeKeyHash));
             // Add cert to txbuilder
             certBuilder.add(Certificate.new_stake_registration(stakeKeyRegCert));
+            this.setState({certBuilder : certBuilder});
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
+    buildStakeKeyUnregCert = async () => {
+        try {
+            const certBuilder = CertificatesBuilder.new();
+            const stakeKeyHash = Ed25519KeyHash.from_hex(this.state.stakeKeyUnreg);
+            const stakeKeyUnregCert = StakeDeregistration.new(Credential.from_keyhash(stakeKeyHash));
+            // Add cert to txbuilder
+            certBuilder.add(Certificate.new_stake_deregistration(stakeKeyUnregCert));
             this.setState({certBuilder : certBuilder});
             return true;
         } catch (err) {
@@ -1338,7 +1364,25 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="8" title=" 💯 Test Basic Transaction" panel={
+                    <Tab id="8" title="🚫🔑 Unregister Stake Key" panel={
+                        <div style={{marginLeft: "20px"}}>
+
+                            <FormGroup
+                                helperText=""
+                                label="Stake Key Hash"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({stakeKeyUnreg : event.target.value})}
+                                    value={this.state.stakeKeyUnreg}
+                                />
+                            </FormGroup>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildStakeKeyUnregCert()) }>Build, .signTx() and .submitTx()</button>
+
+                        </div>
+                    } />
+                    <Tab id="9" title=" 💯 Test Basic Transaction" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(true) }>Build, .signTx() and .submitTx()</button>
