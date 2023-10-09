@@ -1128,6 +1128,34 @@ export default class App extends React.Component
         }
     }
 
+    // todo update
+    buildNewInfoAct = async () => {
+        try {
+            // Create new info action
+            const constChange = NewConstitutionAction.new(Constitution.new(constAnchor));
+            const constChangeGovAct = GovernanceAction.new_new_constitution_action(constChange);
+            // Create anchor and then reset state
+            const anchorURL = URL.new(this.state.cip95MetadataURL);
+            const anchorHash = AnchorDataHash.from_hex(this.state.cip95MetadataHash);
+            const anchor = Anchor.new(anchorURL, anchorHash);
+            // Reset anchor state
+            this.setState({cip95MetadataURL : ""});
+            this.setState({cip95MetadataHash : ""});
+            // Lets just use the connect wallet's reward address
+            const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
+            // Create voting proposal
+            const votingProposal = VotingProposal.new(constChangeGovAct, anchor, rewardAddr, BigNum.from_str("0"))
+            // Create gov action builder and set it in state
+            const govActionBuilder = VotingProposalBuilder.new()
+            govActionBuilder.add(votingProposal)
+            this.setState({govActionBuilder});
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
     async componentDidMount() {
         this.pollWallets();
         await this.refreshData();
@@ -1383,7 +1411,35 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="7" title="🔑 Register Stake Key" panel={
+                    <Tab id="7" title="💡 Governance Action: New Info action" panel={
+                        <div style={{marginLeft: "20px"}}>
+
+                            <FormGroup
+                                label="Metadata URL"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataURL}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
+                                helperText=""
+                                label="Metadata Hash"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                />
+                            </FormGroup>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildNewInfoGovAct()) }>Build, .signTx() and .submitTx()</button>
+
+                        </div>
+                    } />
+                    <Tab id="8" title="🔑 Register Stake Key" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
@@ -1401,7 +1457,7 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="8" title="🚫🔑 Unregister Stake Key" panel={
+                    <Tab id="9" title="🚫🔑 Unregister Stake Key" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
