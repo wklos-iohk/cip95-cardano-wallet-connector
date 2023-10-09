@@ -35,12 +35,13 @@ import {
     VotingProcedure,
     VotingProposalBuilder,
     VotingProposal,
-    NewConstitutionProposal,
+    NewConstitutionAction,
     Constitution,
     AnchorDataHash,
     URL,
     StakeRegistration,
     StakeDeregistration,
+    GovernanceAction,
 } from "@emurgo/cardano-serialization-lib-asmjs"
 import "./App.css";
 let Buffer = require('buffer/').Buffer
@@ -647,8 +648,6 @@ export default class App extends React.Component
                 .max_value_size(this.protocolParams.maxValSize)
                 .max_tx_size(this.protocolParams.maxTxSize)
                 .prefer_pure_change(true)
-                // Conway Alpha
-                .voting_proposal_deposit(BigNum.from_str(this.protocolParams.votingProposalDeposit))
                 .build()
         );
 
@@ -843,17 +842,14 @@ export default class App extends React.Component
             try {
                 txBuilder.add_inputs_from(txUnspentOutputs, 1)
             } catch (err) {
+                txBuilder.add_inputs_from(txUnspentOutputs, 2)
                 console.log("UTxO selection strategy 1 failed, trying strategy 2");
                 console.log(err);
-            } finally {
-                txBuilder.add_inputs_from(txUnspentOutputs, 2)
             }
             // Set change address, incase too much ADA provided for fee
             txBuilder.add_change_if_needed(shelleyChangeAddress)
-
             // Build transaction body
             const txBody = txBuilder.build();
-
             // Make a full transaction, passing in empty witness set
             const transactionWitnessSet = TransactionWitnessSet.new();
             const tx = Transaction.new(
@@ -974,7 +970,9 @@ export default class App extends React.Component
             let dRepRegCert;
             // If there is an anchor
             if (!(this.state.cip95MetadataURL === "" && this.state.cip95MetadataHash === "")) {
-                const anchor = Anchor.new(this.state.cip95MetadataURL, this.state.cip95MetadataHash);
+                const anchorURL = URL.new(this.state.cip95MetadataURL);
+                const anchorHash = AnchorDataHash.from_hex(this.state.cip95MetadataHash);
+                const anchor = Anchor.new(anchorURL, anchorHash);
                 // Create cert object using one Ada as the deposit
                 dRepRegCert = DrepRegistration.new_with_anchor(
                     dRepCred,
@@ -1013,7 +1011,9 @@ export default class App extends React.Component
             let dRepUpdateCert;
             // If there is an anchor
             if (!(this.state.cip95MetadataURL === "" && this.state.cip95MetadataHash === "")) {
-                const anchor = Anchor.new(this.state.cip95MetadataURL, this.state.cip95MetadataHash);
+                const anchorURL = URL.new(this.state.cip95MetadataURL);
+                const anchorHash = AnchorDataHash.from_hex(this.state.cip95MetadataHash);
+                const anchor = Anchor.new(anchorURL, anchorHash);
                 // Create cert object using one Ada as the deposit
                 dRepUpdateCert = DrepUpdate.new_with_anchor(
                     dRepCred,
@@ -1079,7 +1079,9 @@ export default class App extends React.Component
 
             let votingProcedure;
             if (!(this.state.cip95MetadataURL === "" && this.state.cip95MetadataHash === "")) {
-                const anchor = Anchor.new(this.state.cip95MetadataURL, this.state.cip95MetadataHash);
+                const anchorURL = URL.new(this.state.cip95MetadataURL);
+                const anchorHash = AnchorDataHash.from_hex(this.state.cip95MetadataHash);
+                const anchor = Anchor.new(anchorURL, anchorHash);
                 // Create cert object using one Ada as the deposit
                 votingProcedure = VotingProcedure.new_with_anchor(votingChoice, anchor);
                 // Reset the anchor state
@@ -1106,20 +1108,23 @@ export default class App extends React.Component
             const constURL = URL.new(this.state.constURL);
             const constDataHash = AnchorDataHash.from_hex(this.state.constHash);
             const constAnchor = Anchor.new(constURL, constDataHash);
-            const constChangeGovAct = NewConstitutionProposal.new(Constitution.new(constAnchor));
-
-            // Add anchor if provided
-            let govAct;
-            if (!(this.state.cip95MetadataURL === "" && this.state.cip95MetadataHash === "")) {
-                // nothing as it apprea
-                // Reset the anchor state
-                this.setState({cip95MetadataURL : ""});
-                this.setState({cip95MetadataHash : ""});
-            } else {
-                govAct = VotingProposal.new_new_constitution_proposal(constChangeGovAct);
-            }
-            const govActionBuilder = (VotingProposalBuilder.new())
-            govActionBuilder.add(govAct);
+            // Create new constitution governance action
+            const constChange = NewConstitutionAction.new(Constitution.new(constAnchor));
+            const constChangeGovAct = GovernanceAction.new_new_constitution_action(constChange);
+            // Create anchor and then reset state
+            const anchorURL = URL.new(this.state.cip95MetadataURL);
+            const anchorHash = AnchorDataHash.from_hex(this.state.cip95MetadataHash);
+            const anchor = Anchor.new(anchorURL, anchorHash);
+            // Reset anchor state
+            this.setState({cip95MetadataURL : ""});
+            this.setState({cip95MetadataHash : ""});
+            // Lets just use the connect wallet's reward address
+            const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
+            // Create voting proposal
+            const votingProposal = VotingProposal.new(constChangeGovAct, anchor, rewardAddr, BigNum.from_str("0"))
+            // Create gov action builder and set it in state
+            const govActionBuilder = VotingProposalBuilder.new()
+            govActionBuilder.add(votingProposal)
             this.setState({govActionBuilder});
             return true;
         } catch (err) {
@@ -1335,7 +1340,7 @@ export default class App extends React.Component
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildVote())}>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
-                    <Tab id="6" title="💡 Governance Action: New Constitution [WIP]" panel={
+                    <Tab id="6" title="💡 Governance Action: New Constitution" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
@@ -1355,6 +1360,28 @@ export default class App extends React.Component
                                     disabled={false}
                                     leftIcon="id-number"
                                     onChange={(event) => this.setState({constHash: event.target.value})}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
+                                label="Metadata URL"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataURL}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
+                                helperText=""
+                                label="Metadata Hash"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
                                 />
                             </FormGroup>
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildNewConstGovAct()) }>Build, .signTx() and .submitTx()</button>
