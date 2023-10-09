@@ -1,5 +1,10 @@
 # Tags
 
+
+### 1.5.4 
+- CSL Alpha v8
+- Fixed New Const Gov Act
+
 ### 1.5.3
 
 - Added stake key unreg

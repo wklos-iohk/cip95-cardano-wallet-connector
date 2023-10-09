@@ -13,15 +13,13 @@ Currently corresponding CIP-95 commit: [6153866](https://github.com/cardano-foun
 
 See [CHANGELOG.md](./CHANGELOG.md) for feature details on older tags.
 
-### 1.5.3
-- Added stake key unreg
-- Fixed and tested vote submission
-- Changed UTxO selection strategy to prioritize 1
-- CSL Alpha v7
+### 1.5.4
+- CSL Alpha v8
+- Fixed New Const Gov Act
 
-### 1.5.4 (In progress)
+### 1.5.5 (In progress)
 - signData
-- Fixed and tested Gov action submission
+- Other gov action submission
 
 ## To Develop
 
