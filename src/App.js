@@ -42,6 +42,7 @@ import {
     StakeRegistration,
     StakeDeregistration,
     GovernanceAction,
+    InfoAction,
 } from "@emurgo/cardano-serialization-lib-asmjs"
 import "./App.css";
 let Buffer = require('buffer/').Buffer
@@ -1128,27 +1129,26 @@ export default class App extends React.Component
         }
     }
 
-    // todo update
-    buildNewInfoAct = async () => {
+    buildNewInfoGovAct = async () => {
         try {
             // Create new info action
-            const constChange = NewConstitutionAction.new(Constitution.new(constAnchor));
-            const constChangeGovAct = GovernanceAction.new_new_constitution_action(constChange);
+            const infoAction = InfoAction.new();
+            const infoGovAct = GovernanceAction.new_info_action(infoAction);
             // Create anchor and then reset state
             const anchorURL = URL.new(this.state.cip95MetadataURL);
             const anchorHash = AnchorDataHash.from_hex(this.state.cip95MetadataHash);
             const anchor = Anchor.new(anchorURL, anchorHash);
-            // Reset anchor state
-            this.setState({cip95MetadataURL : ""});
-            this.setState({cip95MetadataHash : ""});
             // Lets just use the connect wallet's reward address
             const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
             // Create voting proposal
-            const votingProposal = VotingProposal.new(constChangeGovAct, anchor, rewardAddr, BigNum.from_str("0"))
+            const votingProposal = VotingProposal.new(infoGovAct, anchor, rewardAddr, BigNum.from_str("0"))
             // Create gov action builder and set it in state
             const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
             this.setState({govActionBuilder});
+            // Reset anchor state
+            this.setState({cip95MetadataURL : ""});
+            this.setState({cip95MetadataHash : ""});
             return true;
         } catch (err) {
             console.log(err);
@@ -1475,7 +1475,7 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="9" title=" 💯 Test Basic Transaction" panel={
+                    <Tab id="10" title=" 💯 Test Basic Transaction" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(true) }>Build, .signTx() and .submitTx()</button>
