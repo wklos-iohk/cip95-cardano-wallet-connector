@@ -945,7 +945,6 @@ export default class App extends React.Component
                 targetDRep = DRep.new_key_hash(Ed25519KeyHash.from_bech32(target.dRep));
             };
             // Create cert object
-            console.log(stakeCred.to_hex())
             const voteDelegationCert = VoteDelegation.new(
                 stakeCred,
                 targetDRep,
