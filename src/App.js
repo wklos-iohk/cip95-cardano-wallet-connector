@@ -931,12 +931,12 @@ export default class App extends React.Component
             if (this.state.regStakeKeyHashHex === "") {
                 console.log("Warning: Using unregistered stake key for vote delegation, this will error when submitting");
                 stakeKeyHash = Ed25519KeyHash.from_hex(this.state.unregStakeKeyHashHex);
-            }else{
+            } else {
                 stakeKeyHash = Ed25519KeyHash.from_hex(this.state.regStakeKeyHashHex);
             };
             const stakeCred = Credential.from_keyhash(stakeKeyHash);
             // Create correct DRep
-            let targetDRep;
+            let targetDRep
             if ((target.dRep).toUpperCase() === 'ABSTAIN') {
                 targetDRep = DRep.new_always_abstain();
             }else if ((target.dRep).toUpperCase() === 'NO CONFIDENCE') {
@@ -945,6 +945,7 @@ export default class App extends React.Component
                 targetDRep = DRep.new_key_hash(Ed25519KeyHash.from_bech32(target.dRep));
             };
             // Create cert object
+            console.log(stakeCred.to_hex())
             const voteDelegationCert = VoteDelegation.new(
                 stakeCred,
                 targetDRep,
