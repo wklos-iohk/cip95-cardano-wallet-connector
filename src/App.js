@@ -931,12 +931,12 @@ export default class App extends React.Component
             if (this.state.regStakeKeyHashHex === "") {
                 console.log("Warning: Using unregistered stake key for vote delegation, this will error when submitting");
                 stakeKeyHash = Ed25519KeyHash.from_hex(this.state.unregStakeKeyHashHex);
-            }else{
+            } else {
                 stakeKeyHash = Ed25519KeyHash.from_hex(this.state.regStakeKeyHashHex);
             };
             const stakeCred = Credential.from_keyhash(stakeKeyHash);
             // Create correct DRep
-            let targetDRep;
+            let targetDRep
             if ((target.dRep).toUpperCase() === 'ABSTAIN') {
                 targetDRep = DRep.new_always_abstain();
             }else if ((target.dRep).toUpperCase() === 'NO CONFIDENCE') {
@@ -1144,7 +1144,7 @@ export default class App extends React.Component
             <div style={{margin: "20px"}}>
 
                 <h1>✨demos dApp✨</h1>
-                <h4>✨v1.5.4✨</h4>
+                <h4>✨v1.5.5✨</h4>
 
                 <input type="checkbox" onChange={this.handleCIP95Select}/> Enable CIP-95?
 
