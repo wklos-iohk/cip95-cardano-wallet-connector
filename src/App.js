@@ -43,6 +43,12 @@ import {
     StakeDeregistration,
     GovernanceAction,
     InfoAction,
+    TreasuryWithdrawals,
+    TreasuryWithdrawalsAction,
+    UpdateCommitteeAction,
+    Committee,
+    UnitInterval,
+    Credentials,
 } from "@emurgo/cardano-serialization-lib-asmjs"
 import "./App.css";
 let Buffer = require('buffer/').Buffer
@@ -126,6 +132,9 @@ export default class App extends React.Component
 
             constURL: "",
             constHash: "",
+
+            treasuryTarget: "",
+            treasuryAmount: "",
 
             supportedExtensions: [],
             enabledExtensions: [],
@@ -533,6 +542,8 @@ export default class App extends React.Component
                         stakeKeyUnreg: "",
                         constURL: "",
                         constHash: "",
+                        treasuryTarget: "",
+                        treasuryAmount: "",
                         supportedExtensions: [],
                         enabledExtensions: [],
                     });
@@ -583,6 +594,8 @@ export default class App extends React.Component
                             stakeKeyReg: "",
                             constURL: "",
                             constHash: "",
+                            treasuryTarget: "",
+                            treasuryAmount: "",
                             stakeKeyUnreg: "",
                             supportedExtensions: [],
                             enabledExtensions: [],
@@ -622,6 +635,8 @@ export default class App extends React.Component
                     stakeKeyReg: "",
                     constURL: "",
                     constHash: "",
+                    treasuryTarget: "",
+                    treasuryAmount: "",
                     stakeKeyUnreg: "",
                     supportedExtensions: "",
                     enabledExtensions: "",
@@ -880,6 +895,9 @@ export default class App extends React.Component
             this.setState({cip95ResultTx});
             this.setState({cip95ResultHash});
             this.setState({cip95ResultWitness});
+            // Reset anchor state
+            this.setState({cip95MetadataURL : ""});
+            this.setState({cip95MetadataHash : ""});
 
         } catch (err) {
             console.log("Error during build, sign and submit transaction");
@@ -975,9 +993,6 @@ export default class App extends React.Component
                     BigNum.from_str("0"), // deposit
                     anchor
                 );
-                // Reset the anchor state
-                this.setState({cip95MetadataURL : ""});
-                this.setState({cip95MetadataHash : ""});
             }else{
                 console.log("DRep Registration - not using anchor")
                 dRepRegCert = DrepRegistration.new(
@@ -1015,9 +1030,6 @@ export default class App extends React.Component
                     dRepCred,
                     anchor
                 );
-                // Reset the anchor state
-                this.setState({cip95MetadataURL : ""});
-                this.setState({cip95MetadataHash : ""});
             }else{
                 dRepUpdateCert = DrepUpdate.new(
                     dRepCred,
@@ -1080,9 +1092,6 @@ export default class App extends React.Component
                 const anchor = Anchor.new(anchorURL, anchorHash);
                 // Create cert object using one Ada as the deposit
                 votingProcedure = VotingProcedure.new_with_anchor(votingChoice, anchor);
-                // Reset the anchor state
-                this.setState({cip95MetadataURL : ""});
-                this.setState({cip95MetadataHash : ""});
             } else {
                 votingProcedure = VotingProcedure.new(votingChoice);
             };
@@ -1111,9 +1120,6 @@ export default class App extends React.Component
             const anchorURL = URL.new(this.state.cip95MetadataURL);
             const anchorHash = AnchorDataHash.from_hex(this.state.cip95MetadataHash);
             const anchor = Anchor.new(anchorURL, anchorHash);
-            // Reset anchor state
-            this.setState({cip95MetadataURL : ""});
-            this.setState({cip95MetadataHash : ""});
             // Lets just use the connect wallet's reward address
             const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
             // Create voting proposal
@@ -1146,9 +1152,64 @@ export default class App extends React.Component
             const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
             this.setState({govActionBuilder});
-            // Reset anchor state
-            this.setState({cip95MetadataURL : ""});
-            this.setState({cip95MetadataHash : ""});
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
+    buildTreasuryGovAct = async () => {
+        try {
+            // take inputs
+            const treasuryTarget = RewardAddress.from_address(Address.from_bech32(this.state.treasuryTarget));
+            const withdrawals = (TreasuryWithdrawals.new()).insert(treasuryTarget, BigNum.from_str(this.state.treasuryAmount));
+            // Create new treasury withdrawal gov act
+            const treasuryAction = TreasuryWithdrawalsAction.new(withdrawals);
+            const treasuryGovAct = GovernanceAction.new_treasury_withdrawals_action(treasuryAction);
+            // Create anchor and then reset state
+            const anchorURL = URL.new(this.state.cip95MetadataURL);
+            const anchorHash = AnchorDataHash.from_hex(this.state.cip95MetadataHash);
+            const anchor = Anchor.new(anchorURL, anchorHash);
+            // Lets just use the connect wallet's reward address
+            const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
+            // Create voting proposal
+            const votingProposal = VotingProposal.new(treasuryGovAct, anchor, rewardAddr, BigNum.from_str("0"))
+            // Create gov action builder and set it in state
+            const govActionBuilder = VotingProposalBuilder.new()
+            govActionBuilder.add(votingProposal)
+            this.setState({govActionBuilder});
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
+    buildUpdateCommitteeGovAct = async () => {
+        try {
+            // Create new committee quorum threshold
+            const threshold = UnitInterval.new(BigNum.from_str("1"), BigNum.from_str("2"));
+            const newCommittee = Committee.new(threshold);
+            // temp: propose new committee which is the wallet's stake key, with expiry of 1000 epoch 
+            const stakeCred = Credential.from_keyhash(Ed25519KeyHash.from_hex(this.state.regStakeKeyHashHex))
+            newCommittee.add_member(stakeCred, 1000)
+            // Create new committee gov action
+            const updateComAction = UpdateCommitteeAction.new(newCommittee, Credentials.new());
+            const updateComGovAct = GovernanceAction.new_new_committee_action(updateComAction);
+
+            // Create anchor and then reset state
+            const anchorURL = URL.new(this.state.cip95MetadataURL);
+            const anchorHash = AnchorDataHash.from_hex(this.state.cip95MetadataHash);
+            const anchor = Anchor.new(anchorURL, anchorHash);
+            // Lets just use the connect wallet's reward address
+            const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
+            // Create voting proposal
+            const votingProposal = VotingProposal.new(updateComGovAct, anchor, rewardAddr, BigNum.from_str("0"))
+            // Create gov action builder and set it in state
+            const govActionBuilder = VotingProposalBuilder.new()
+            govActionBuilder.add(votingProposal)
+            this.setState({govActionBuilder});
             return true;
         } catch (err) {
             console.log(err);
@@ -1411,8 +1472,56 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="7" title="💡 Governance Action: New Info action" panel={
+                    <Tab id="7" title="[WIP] 💡 Governance Action: New Info action" panel={
                         <div style={{marginLeft: "20px"}}>
+
+                            <FormGroup
+                                label="Metadata URL"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataURL}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
+                                helperText=""
+                                label="Metadata Hash"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                />
+                            </FormGroup>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildTreasuryGovAct()) }>Build, .signTx() and .submitTx()</button>
+
+                        </div>
+                    } />
+                    <Tab id="8" title="[WIP] 💡 Governance Action: New Treasury Withdrawal" panel={
+                        <div style={{marginLeft: "20px"}}>
+
+                            <FormGroup
+                                label="Treasury Withdrawal Target Rewards Address"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({treasuryTarget: event.target.value})}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
+                                label="Treasury Withdrawal Amount"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({treasuryAmount: event.target.value})}
+                                />
+                            </FormGroup>
 
                             <FormGroup
                                 label="Metadata URL"
@@ -1439,7 +1548,35 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="8" title="🔑 Register Stake Key" panel={
+                    <Tab id="9" title="[WIP] 💡 Governance Action: Update Const Committee" panel={
+                        <div style={{marginLeft: "20px"}}>
+
+                            <FormGroup
+                                label="Metadata URL"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataURL}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
+                                helperText=""
+                                label="Metadata Hash"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                />
+                            </FormGroup>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildUpdateCommitteeGovAct()) }>Build, .signTx() and .submitTx()</button>
+
+                        </div>
+                    } />
+                    <Tab id="10" title="🔑 Register Stake Key" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
@@ -1457,7 +1594,7 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="9" title="🚫🔑 Unregister Stake Key" panel={
+                    <Tab id="11" title="🚫🔑 Unregister Stake Key" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
@@ -1475,7 +1612,7 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="10" title=" 💯 Test Basic Transaction" panel={
+                    <Tab id="12" title=" 💯 Test Basic Transaction" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(true) }>Build, .signTx() and .submitTx()</button>
