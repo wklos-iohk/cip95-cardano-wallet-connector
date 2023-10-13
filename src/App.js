@@ -839,13 +839,8 @@ export default class App extends React.Component
             // Find the available UTXOs in the wallet and use them as Inputs for the transaction
             const txUnspentOutputs = await this.getTxUnspentOutputs();
             // Use UTxO selection strategy 2 if 1 not possible
-            try {
-                txBuilder.add_inputs_from(txUnspentOutputs, 1)
-            } catch (err) {
-                txBuilder.add_inputs_from(txUnspentOutputs, 2)
-                console.log("UTxO selection strategy 1 failed, trying strategy 2");
-                console.log(err);
-            }
+            txBuilder.add_inputs_from(txUnspentOutputs, 2)
+
             // Set change address, incase too much ADA provided for fee
             txBuilder.add_change_if_needed(shelleyChangeAddress)
             // Build transaction body
