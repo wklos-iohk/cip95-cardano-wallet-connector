@@ -16,13 +16,14 @@ Currently corresponding CIP-95 commit: [6153866](https://github.com/cardano-foun
 
 See [CHANGELOG.md](./CHANGELOG.md) for feature details on older tags.
 
-### 1.5.5
-- CSL Alpha v10
-- Fixed delegating to predefined DReps
+### 1.5.6
+- Added treasury withdrawal
+- WIP Info action
+- WIP Update committee
+- Fixed UTxO selection strategy
 
-### 1.5.6(In progress)
+### 1.5.7(In progress)
 - signData
-- Other gov action submission
 
 ## To Develop
 

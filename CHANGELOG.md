@@ -1,5 +1,13 @@
 # Tags
 
+### 1.5.6
+- Added treasury withdrawal
+- WIP Info action
+- WIP Update committee
+- Fixed UTxO selection strategy
+
+![](./images/1.5.6.PNG)
+
 ### 1.5.5
 - CSL Alpha v10
 - Fixed delegating to predefined DReps
