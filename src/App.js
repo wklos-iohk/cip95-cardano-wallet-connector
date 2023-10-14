@@ -758,7 +758,7 @@ export default class App extends React.Component
             const raw = await this.API.cip95.getUnregisteredPubStakeKeys();
             // Just use the first key for now
             if (raw.length < 1){
-                console.log("No Unregistered Pub Stake Keys");
+                // console.log("No Unregistered Pub Stake Keys");
             } else {
 
                 // Set array
@@ -1163,7 +1163,9 @@ export default class App extends React.Component
         try {
             // take inputs
             const treasuryTarget = RewardAddress.from_address(Address.from_bech32(this.state.treasuryTarget));
-            const withdrawals = (TreasuryWithdrawals.new()).insert(treasuryTarget, BigNum.from_str(this.state.treasuryAmount));
+            const myWithdrawal = BigNum.from_str(this.state.treasuryAmount);
+            const withdrawals = (TreasuryWithdrawals.new())
+            withdrawals.insert(treasuryTarget, myWithdrawal)
             // Create new treasury withdrawal gov act
             const treasuryAction = TreasuryWithdrawalsAction.new(withdrawals);
             const treasuryGovAct = GovernanceAction.new_treasury_withdrawals_action(treasuryAction);
@@ -1496,11 +1498,11 @@ export default class App extends React.Component
                                     onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
                                 />
                             </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildTreasuryGovAct()) }>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildNewInfoGovAct()) }>Build, .signTx() and .submitTx()</button>
 
                         </div>
                     } />
-                    <Tab id="8" title="[WIP] 💡 Governance Action: New Treasury Withdrawal" panel={
+                    <Tab id="8" title="💡 Governance Action: New Treasury Withdrawal" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
@@ -1544,7 +1546,7 @@ export default class App extends React.Component
                                     onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
                                 />
                             </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildNewInfoGovAct()) }>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildTreasuryGovAct()) }>Build, .signTx() and .submitTx()</button>
 
                         </div>
                     } />
