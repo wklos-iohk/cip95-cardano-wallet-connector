@@ -1474,7 +1474,7 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="7" title="[WIP] 💡 Governance Action: New Info action" panel={
+                    <Tab id="7" title="💡 Governance Action: New Info action" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
