@@ -23,7 +23,8 @@ See [CHANGELOG.md](./CHANGELOG.md) for feature details on older tags.
 - WIP Update committee
 - Fixed UTxO selection strategy
 
-### 1.5.7(In progress)
+### 1.5.7 (In progress)
+- Added no confidence action
 - signData
 
 ## To Develop
