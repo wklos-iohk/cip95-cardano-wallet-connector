@@ -50,6 +50,8 @@ import {
     UnitInterval,
     Credentials,
     NoConfidenceAction,
+    ParameterChangeAction,
+    ProtocolParamUpdate,
 } from "@emurgo/cardano-serialization-lib-asmjs"
 import "./App.css";
 let Buffer = require('buffer/').Buffer
@@ -1247,6 +1249,33 @@ export default class App extends React.Component
         }
     }
 
+    buildProtocolParamAction = async () => {
+        try {
+            // Placeholder just do key deposit for now
+            const protocolParmUpdate = ProtocolParamUpdate.new();
+            protocolParmUpdate.set_key_deposit(BigNum.from_str("0"));
+            // Create new committee gov action
+            const parameterChangeAction = ParameterChangeAction.new(protocolParmUpdate);
+            const parameterChangeGovAct = GovernanceAction.new_parameter_change_action(parameterChangeAction);
+            // Create anchor and then reset state
+            const anchorURL = URL.new(this.state.cip95MetadataURL);
+            const anchorHash = AnchorDataHash.from_hex(this.state.cip95MetadataHash);
+            const anchor = Anchor.new(anchorURL, anchorHash);
+            // Lets just use the connect wallet's reward address
+            const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
+            // Create voting proposal
+            const votingProposal = VotingProposal.new(parameterChangeGovAct, anchor, rewardAddr, BigNum.from_str("0"))
+            // Create gov action builder and set it in state
+            const govActionBuilder = VotingProposalBuilder.new()
+            govActionBuilder.add(votingProposal)
+            this.setState({govActionBuilder});
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
     async componentDidMount() {
         this.pollWallets();
         await this.refreshData();
@@ -1620,7 +1649,7 @@ export default class App extends React.Component
                                     onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
                                 />
                             </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildNewInfoGovAct()) }>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildProtocolParamAction()) }>Build, .signTx() and .submitTx()</button>
 
                         </div>
                     } />
