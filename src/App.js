@@ -20,7 +20,6 @@ import {
     PublicKey,
     RewardAddress,
     Ed25519KeyHash,
-    // Conway alpha
     CertificatesBuilder,
     VoteDelegation,
     DRep,
@@ -52,6 +51,8 @@ import {
     NoConfidenceAction,
     ParameterChangeAction,
     ProtocolParamUpdate,
+    HardForkInitiationAction,
+    ProtocolVersion,
 } from "@emurgo/cardano-serialization-lib-asmjs"
 import "./App.css";
 let Buffer = require('buffer/').Buffer
@@ -140,6 +141,9 @@ export default class App extends React.Component
 
             treasuryTarget: "",
             treasuryAmount: "",
+
+            hardForkUpdateMajor: "",
+            hardForkUpdateMinor: "",
 
             supportedExtensions: [],
             enabledExtensions: [],
@@ -549,6 +553,8 @@ export default class App extends React.Component
                         constHash: "",
                         treasuryTarget: "",
                         treasuryAmount: "",
+                        hardForkUpdateMajor: "",
+                        hardForkUpdateMinor: "",
                         supportedExtensions: [],
                         enabledExtensions: [],
                     });
@@ -601,6 +607,8 @@ export default class App extends React.Component
                             constHash: "",
                             treasuryTarget: "",
                             treasuryAmount: "",
+                            hardForkUpdateMajor: "",
+                            hardForkUpdateMinor: "",
                             stakeKeyUnreg: "",
                             supportedExtensions: [],
                             enabledExtensions: [],
@@ -642,6 +650,8 @@ export default class App extends React.Component
                     constHash: "",
                     treasuryTarget: "",
                     treasuryAmount: "",
+                    hardForkUpdateMajor: "",
+                    hardForkUpdateMinor: "",
                     stakeKeyUnreg: "",
                     supportedExtensions: "",
                     enabledExtensions: "",
@@ -1226,8 +1236,7 @@ export default class App extends React.Component
 
     buildMotionOfNoConfidenceAction = async () => {
         try {
-
-            // Create new committee gov action
+            // Create motion of no confidence gov action
             const noConfidenceAction = NoConfidenceAction.new();
             const noConfidenceGovAct = GovernanceAction.new_no_confidence_action(noConfidenceAction);
             // Create anchor and then reset state
@@ -1254,7 +1263,7 @@ export default class App extends React.Component
             // Placeholder just do key deposit for now
             const protocolParmUpdate = ProtocolParamUpdate.new();
             protocolParmUpdate.set_key_deposit(BigNum.from_str("0"));
-            // Create new committee gov action
+            // Create param change gov action
             const parameterChangeAction = ParameterChangeAction.new(protocolParmUpdate);
             const parameterChangeGovAct = GovernanceAction.new_parameter_change_action(parameterChangeAction);
             // Create anchor and then reset state
@@ -1265,6 +1274,31 @@ export default class App extends React.Component
             const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
             // Create voting proposal
             const votingProposal = VotingProposal.new(parameterChangeGovAct, anchor, rewardAddr, BigNum.from_str("0"))
+            // Create gov action builder and set it in state
+            const govActionBuilder = VotingProposalBuilder.new()
+            govActionBuilder.add(votingProposal)
+            this.setState({govActionBuilder});
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
+    buildHardForkAction = async () => {
+        try {
+            const nextProtocolVerion = ProtocolVersion.new(this.state.hardForkUpdateMajor, this.state.hardForkUpdateMinor);
+            // Create HF Initiation Action
+            const hardForkInitiationAction = HardForkInitiationAction.new(nextProtocolVerion);
+            const hardForkInitiationGovAct = GovernanceAction.new_hard_fork_initiation_action(hardForkInitiationAction);
+            // Create anchor and then reset state
+            const anchorURL = URL.new(this.state.cip95MetadataURL);
+            const anchorHash = AnchorDataHash.from_hex(this.state.cip95MetadataHash);
+            const anchor = Anchor.new(anchorURL, anchorHash);
+            // Lets just use the connect wallet's reward address
+            const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
+            // Create voting proposal
+            const votingProposal = VotingProposal.new(hardForkInitiationGovAct, anchor, rewardAddr, BigNum.from_str("0"))
             // Create gov action builder and set it in state
             const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
@@ -1601,6 +1635,28 @@ export default class App extends React.Component
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
+                                helperText=""
+                                label="Update Major Version"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({hardForkUpdateMajor: event.target.value})}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
+                                helperText=""
+                                label="Update Minor Version"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({hardForkUpdateMinor: event.target.value})}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
                                 label="Metadata URL"
                             >
                                 <InputGroup
@@ -1621,7 +1677,7 @@ export default class App extends React.Component
                                     onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
                                 />
                             </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildNewInfoGovAct()) }>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildHardForkAction()) }>Build, .signTx() and .submitTx()</button>
 
                         </div>
                     } />
