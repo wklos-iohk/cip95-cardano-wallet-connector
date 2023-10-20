@@ -49,6 +49,7 @@ import {
     Committee,
     UnitInterval,
     Credentials,
+    NoConfidenceAction,
 } from "@emurgo/cardano-serialization-lib-asmjs"
 import "./App.css";
 let Buffer = require('buffer/').Buffer
@@ -1221,6 +1222,31 @@ export default class App extends React.Component
         }
     }
 
+    buildMotionOfNoConfidenceAction = async () => {
+        try {
+
+            // Create new committee gov action
+            const noConfidenceAction = NoConfidenceAction.new();
+            const noConfidenceGovAct = GovernanceAction.new_no_confidence_action(noConfidenceAction);
+            // Create anchor and then reset state
+            const anchorURL = URL.new(this.state.cip95MetadataURL);
+            const anchorHash = AnchorDataHash.from_hex(this.state.cip95MetadataHash);
+            const anchor = Anchor.new(anchorURL, anchorHash);
+            // Lets just use the connect wallet's reward address
+            const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
+            // Create voting proposal
+            const votingProposal = VotingProposal.new(noConfidenceGovAct, anchor, rewardAddr, BigNum.from_str("0"))
+            // Create gov action builder and set it in state
+            const govActionBuilder = VotingProposalBuilder.new()
+            govActionBuilder.add(votingProposal)
+            this.setState({govActionBuilder});
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
     async componentDidMount() {
         this.pollWallets();
         await this.refreshData();
@@ -1231,7 +1257,7 @@ export default class App extends React.Component
         return (
             <div style={{margin: "20px"}}>
 
-                <h1>✨demos dApp✨</h1>
+                <h1>✨demos CIP-95 dApp✨</h1>
                 <h4>✨v1.5.6✨</h4>
 
                 <input type="checkbox" onChange={this.handleCIP95Select}/> Enable CIP-95?
@@ -1462,7 +1488,7 @@ export default class App extends React.Component
                                     onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
                                 />
                             </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildTreasuryGovAct()) }>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildMotionOfNoConfidenceAction()) }>Build, .signTx() and .submitTx()</button>
 
                         </div>
                     } />
@@ -1736,7 +1762,8 @@ export default class App extends React.Component
                 <p><span style={{fontWeight: "bold"}}>Witnesses: </span>{this.state.cip95ResultWitness}</p>
 
                 <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
-
+                
+                <h5>✨Powered by CSL 12 alpha 11✨</h5>
             </div>
         )
     }
