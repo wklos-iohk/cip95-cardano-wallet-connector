@@ -91,7 +91,9 @@ export default class App extends React.Component
             manualFee: 900000,
 
             // CIP-95 Stuff
-            selected95TabId: "1",
+            selected95BasicTabId: "1",
+            selected95ActionsTabId: "1",
+            selected95MiscTabId: "1",
             selectedCIP95: false,
             // DRep key items
             dRepKey: undefined,
@@ -1285,8 +1287,10 @@ export default class App extends React.Component
                 <p><span style={{ fontWeight: "bold" }}>.cip95.getUnregisteredPubStakeKeys():</span><ul>{this.state.unregStakeKeys && this.state.unregStakeKeys.length > 0  ? (this.state.unregStakeKeys.map((item, index) => (<li style={{ fontSize: "12px" }} key={index}>{item}</li>))) : (<li>No unregistered public stake keys returned.</li>)}</ul></p>
                 <p><span style={{fontWeight: "lighter"}}> First unregistered Stake Key Hash (hex): </span>{this.state.unregStakeKeyHashHex}</p>
                 
+                <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
                 <p><span style={{fontWeight: "bold"}}>Use CIP-95 .signTx(): </span></p>
-                <Tabs id="cip95" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95TabId}>
+                <p><span style={{fontWeight: "lighter"}}> Basic Governance Functions</span></p>
+                <Tabs id="cip95-basic" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95BasicTabId}>
                     <Tab id="1" title="🦸‍♀️ Vote Delegation" panel={
                         <div style={{marginLeft: "20px"}}>
 
@@ -1426,7 +1430,71 @@ export default class App extends React.Component
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildVote())}>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
-                    <Tab id="6" title="💡 Governance Action: New Constitution" panel={
+                    <Tabs.Expander />
+                </Tabs>
+                <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
+
+                <p><span style={{fontWeight: "bold"}}>Use CIP-95 .signTx(): </span></p>
+                <p><span style={{fontWeight: "lighter"}}> Governance Actions</span></p>
+
+                <Tabs id="cip95-actions" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95ActionsTabId}>
+                    <Tab id="1" title="💡 Governance Action: Motion of no-confidence" panel={
+                        <div style={{marginLeft: "20px"}}>
+
+                            <FormGroup
+                                label="Metadata URL"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataURL}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
+                                helperText=""
+                                label="Metadata Hash"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                />
+                            </FormGroup>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildTreasuryGovAct()) }>Build, .signTx() and .submitTx()</button>
+
+                        </div>
+                    } />
+                    <Tab id="2" title="[WIP] 💡 Governance Action: Update Constitutional Committee" panel={
+                        <div style={{marginLeft: "20px"}}>
+
+                            <FormGroup
+                                label="Metadata URL"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataURL}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
+                                helperText=""
+                                label="Metadata Hash"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                />
+                            </FormGroup>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildUpdateCommitteeGovAct()) }>Build, .signTx() and .submitTx()</button>
+
+                        </div>
+                    } />
+                    <Tab id="3" title="💡 Governance Action: Update Constitution" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
@@ -1474,7 +1542,7 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="7" title="💡 Governance Action: New Info action" panel={
+                    <Tab id="4" title="[WIP] 💡 Governance Action: Hard-Fork Initation" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
@@ -1502,7 +1570,35 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="8" title="💡 Governance Action: New Treasury Withdrawal" panel={
+                    <Tab id="5" title="[WIP] 💡 Governance Action: Protocol Parameter Update" panel={
+                        <div style={{marginLeft: "20px"}}>
+
+                            <FormGroup
+                                label="Metadata URL"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                    defaultValue={this.state.cip95MetadataURL}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
+                                helperText=""
+                                label="Metadata Hash"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                />
+                            </FormGroup>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildNewInfoGovAct()) }>Build, .signTx() and .submitTx()</button>
+
+                        </div>
+                    } />
+                    <Tab id="6" title="💡 Governance Action: Treasury Withdrawal" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
@@ -1550,7 +1646,7 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="9" title="[WIP] 💡 Governance Action: Update Const Committee" panel={
+                    <Tab id="7" title="💡 Governance Action: Info action" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
@@ -1574,11 +1670,20 @@ export default class App extends React.Component
                                     onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
                                 />
                             </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildUpdateCommitteeGovAct()) }>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildNewInfoGovAct()) }>Build, .signTx() and .submitTx()</button>
 
                         </div>
                     } />
-                    <Tab id="10" title="🔑 Register Stake Key" panel={
+
+                    <Tabs.Expander />
+                </Tabs>
+                <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
+
+                <p><span style={{fontWeight: "bold"}}>Use CIP-95 .signTx(): </span></p>
+                <p><span style={{fontWeight: "lighter"}}> Random Stuff</span></p>
+                
+                <Tabs id="cip95-misc" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95MiscTabId}>
+                    <Tab id="1" title="🔑 Register Stake Key" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
@@ -1596,7 +1701,7 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="11" title="🚫🔑 Unregister Stake Key" panel={
+                    <Tab id="2" title="🚫🔑 Unregister Stake Key" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
@@ -1614,7 +1719,7 @@ export default class App extends React.Component
 
                         </div>
                     } />
-                    <Tab id="12" title=" 💯 Test Basic Transaction" panel={
+                    <Tab id="3" title=" 💯 Test Basic Transaction" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(true) }>Build, .signTx() and .submitTx()</button>
@@ -1623,11 +1728,14 @@ export default class App extends React.Component
                     } />
                     <Tabs.Expander />
                 </Tabs>
+                
+                <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
+
                 <p><span style={{fontWeight: "bold"}}>CborHex Tx: </span>{this.state.cip95ResultTx}</p>
                 <p><span style={{fontWeight: "bold"}}>Tx Hash: </span>{this.state.cip95ResultHash}</p>
                 <p><span style={{fontWeight: "bold"}}>Witnesses: </span>{this.state.cip95ResultWitness}</p>
 
-                <hr style={{marginTop: "40px", marginBottom: "40px"}}/>
+                <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
 
             </div>
         )
