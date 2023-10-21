@@ -1,5 +1,17 @@
 # Tags
 
+### 1.5.7
+- Bump to CSL alpha 11
+- UI refresh
+- Fix info action
+- Add no confidence action
+- Add placeholder for protocol parameter update
+- Add placeholder for HF
+- Refactoring
+- default to CIP-95 enabled
+
+![](./images/1.5.7.PNG)
+
 ### 1.5.6
 - Added treasury withdrawal
 - WIP Info action
