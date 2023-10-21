@@ -773,14 +773,13 @@ export default class App extends React.Component
                     BigNum.from_str("0"),
                     anchor
                 );
-            // Else there is no anchor
             } else {
                 dRepRegCert = DrepRegistration.new(
                     dRepCred,
                     BigNum.from_str("0"),
                 );
             };
-            // add cert to txbuilder
+            // add cert to certbuilder
             certBuilder.add(Certificate.new_drep_registration(dRepRegCert));
             this.setState({certBuilder : certBuilder});
             return true;
@@ -794,10 +793,9 @@ export default class App extends React.Component
         try {
             // Build DRep Registration Certificate
             const certBuilder = CertificatesBuilder.new();
-            // Get wallet's DRep key
+            // Use the wallet's DRep ID
             const dRepKeyHash = Ed25519KeyHash.from_hex(this.state.dRepID);
             const dRepCred = Credential.from_keyhash(dRepKeyHash);
-
             let dRepUpdateCert;
             // If there is an anchor
             if (this.state.cip95MetadataURL && this.state.cip95MetadataHash) {
@@ -809,12 +807,12 @@ export default class App extends React.Component
                     dRepCred,
                     anchor
                 );
-            }else{
+            } else {
                 dRepUpdateCert = DrepUpdate.new(
                     dRepCred,
                 );
             };
-            // add cert to tbuilder
+            // add cert to certbuilder
             certBuilder.add(Certificate.new_drep_update(dRepUpdateCert));
             this.setState({certBuilder : certBuilder});
             return true;
@@ -828,15 +826,14 @@ export default class App extends React.Component
         try {
             // Build DRep Registration Certificate
             const certBuilder = CertificatesBuilder.new();
-            // Get wallet's DRep key
+            // Use the wallet's DRep ID
             const dRepKeyHash = Ed25519KeyHash.from_hex(this.state.dRepID);
             const dRepCred = Credential.from_keyhash(dRepKeyHash);
-        
             const dRepRetirementCert = DrepDeregistration.new(
                 dRepCred,
                 BigNum.from_str("0"),
             );
-            // add cert to tbuilder
+            // add cert to certbuilder
             certBuilder.add(Certificate.new_drep_deregistration(dRepRetirementCert));
             this.setState({certBuilder : certBuilder});
             return true;
@@ -850,10 +847,10 @@ export default class App extends React.Component
         try {
             // Use wallet's DRep key
             const dRepKeyHash = Ed25519KeyHash.from_hex(this.state.dRepID);
-            // Use connected wallet as voter
             const voter = Voter.new_drep(Credential.from_keyhash(dRepKeyHash))
             // What is being voted on
-            const govActionId = GovernanceActionId.new(TransactionHash.from_hex(this.state.voteGovActionTxHash), this.state.voteGovActionIndex);
+            const govActionId = GovernanceActionId.new(
+                TransactionHash.from_hex(this.state.voteGovActionTxHash), this.state.voteGovActionIndex);
             // Voting choice
             let votingChoice;
             if ((this.state.voteChoice).toUpperCase() === "YES") {
@@ -863,13 +860,11 @@ export default class App extends React.Component
             } else if ((this.state.voteChoice).toUpperCase() === "ABSTAIN") {
                 votingChoice = 2
             }
-
             let votingProcedure;
-            if (!(this.state.cip95MetadataURL === "" && this.state.cip95MetadataHash === "")) {
+            if (this.state.cip95MetadataURL && this.state.cip95MetadataHash) {
                 const anchorURL = URL.new(this.state.cip95MetadataURL);
                 const anchorHash = AnchorDataHash.from_hex(this.state.cip95MetadataHash);
                 const anchor = Anchor.new(anchorURL, anchorHash);
-                // Create cert object using one Ada as the deposit
                 votingProcedure = VotingProcedure.new_with_anchor(votingChoice, anchor);
             } else {
                 votingProcedure = VotingProcedure.new(votingChoice);
@@ -878,7 +873,6 @@ export default class App extends React.Component
             const votingBuilder = VotingBuilder.new();
             votingBuilder.add(voter, govActionId, votingProcedure);
             this.setState({votingBuilder});
-            
             return true;
         } catch (err) {
             console.log(err);
