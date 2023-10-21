@@ -56,8 +56,6 @@ import {
 } from "@emurgo/cardano-serialization-lib-asmjs"
 import "./App.css";
 let Buffer = require('buffer/').Buffer
-let { bech32 } = require('bech32')
-
 
 export default class App extends React.Component
 {
@@ -127,20 +125,6 @@ export default class App extends React.Component
          */
         this.API = undefined;
 
-        /**
-         * Protocol parameters
-         * @type {{
-         * keyDeposit: string,
-         * coinsPerUtxoWord: string,
-         * minUtxo: string,
-         * poolDeposit: string,
-         * maxTxSize: number,
-         * priceMem: number,
-         * maxValSize: number,
-         * linearFee: {minFeeB: string, minFeeA: string}, priceStep: number,
-         * votingProposalDeposit: string
-         * }}
-         */
         this.protocolParams = {
             linearFee: {
                 minFeeA: "44",
@@ -157,7 +141,6 @@ export default class App extends React.Component
             // Conway Alpha
             votingProposalDeposit: "0",
         }
-
         this.pollWallets = this.pollWallets.bind(this);
     }
 
@@ -165,10 +148,6 @@ export default class App extends React.Component
      * Poll the wallets it can read from the browser.
      * Sometimes the html document loads before the browser initialized browser plugins (like Nami or Flint).
      * So we try to poll the wallets 3 times (with 1 second in between each try).
-     *
-     * Note: CCVault and Eternl are the same wallet, Eternl is a rebrand of CCVault
-     * So both of these wallets as the Eternl injects itself twice to maintain
-     * backward compatibility
      *
      * @param count The current try count.
      */
@@ -193,11 +172,6 @@ export default class App extends React.Component
         });
     }
 
-    /**
-     * Handles the radio buttons on the form that
-     * let the user choose which wallet to work with
-     * @param obj
-     */
     handleWalletSelect = (obj) => {
         const whichWalletSelected = obj.target.value
         this.setState({whichWalletSelected},
@@ -206,12 +180,6 @@ export default class App extends React.Component
             })
     }
 
-    /**
-     * Checks if the wallet is running in the browser
-     * Does this for Nami, Eternl and Flint wallets
-     * @returns {boolean}
-     */
-
     checkIfWalletFound = () => {
         const walletKey = this.state.whichWalletSelected;
         const walletFound = !!window?.cardano?.[walletKey];
@@ -219,11 +187,6 @@ export default class App extends React.Component
         return walletFound;
     }
 
-    /**
-     * Checks if a connection has been established with
-     * the wallet
-     * @returns {Promise<boolean>}
-     */
     checkIfWalletEnabled = async () => {
         let walletIsEnabled = false;
         try {
@@ -236,14 +199,6 @@ export default class App extends React.Component
         return walletIsEnabled;
     }
 
-    /**
-     * Enables the wallet that was chosen by the user
-     * When this executes the user should get a window pop-up
-     * from the wallet asking to approve the connection
-     * of this app to the wallet
-     * @returns {Promise<boolean>}
-     */
-
     enableWallet = async () => {
         const walletKey = this.state.whichWalletSelected;
         try {
@@ -254,23 +209,12 @@ export default class App extends React.Component
         return this.checkIfWalletEnabled();
     }
 
-    /**
-     * Get the API version used by the wallets
-     * writes the value to state
-     * @returns {*}
-     */
     getAPIVersion = () => {
         const walletKey = this.state.whichWalletSelected;
         const walletAPIVersion = window?.cardano?.[walletKey].apiVersion;
         this.setState({walletAPIVersion})
         return walletAPIVersion;
     }
-
-    /**
-     * Get the name of the wallet (nami, eternl, flint)
-     * and store the name in the state
-     * @returns {*}
-     */
 
     getWalletName = () => {
         const walletKey = this.state.whichWalletSelected;
@@ -300,18 +244,10 @@ export default class App extends React.Component
         }
     }
 
-    /**
-     * Gets the Network ID to which the wallet is connected
-     * 0 = testnet
-     * 1 = mainnet
-     * Then writes either 0 or 1 to state
-     * @returns {Promise<void>}
-     */
     getNetworkId = async () => {
         try {
             const networkId = await this.API.getNetworkId();
             this.setState({networkId})
-
         } catch (err) {
             console.log(err)
         }
@@ -322,14 +258,10 @@ export default class App extends React.Component
      * stores in an object in the state
      * @returns {Promise<void>}
      */
-
     getUtxos = async () => {
-
         let Utxos = [];
-
         try {
             const rawUtxos = await this.API.getUtxos();
-
             for (const rawUtxo of rawUtxos) {
                 const utxo = TransactionUnspentOutput.from_bytes(Buffer.from(rawUtxo, "hex"));
                 const input = utxo.input();
@@ -339,13 +271,10 @@ export default class App extends React.Component
                 const amount = output.amount().coin().to_str(); // ADA amount in lovelace
                 const multiasset = output.amount().multiasset();
                 let multiAssetStr = "";
-
                 if (multiasset) {
                     const keys = multiasset.keys() // policy Ids of thee multiasset
                     const N = keys.len();
                     // console.log(`${N} Multiassets in the UTXO`)
-
-
                     for (let i = 0; i < N; i++){
                         const policyId = keys.get(i);
                         const policyIdHex = Buffer.from(policyId.to_bytes(), "utf8").toString('hex');
@@ -383,29 +312,16 @@ export default class App extends React.Component
         }
     }
 
-    /**
-     * Gets the current balance of in Lovelace in the user's wallet
-     * This doesnt resturn the amounts of all other Tokens
-     * For other tokens you need to look into the full UTXO list
-     * @returns {Promise<void>}
-     */
     getBalance = async () => {
         try {
             const balanceCBORHex = await this.API.getBalance();
-
             const balance = Value.from_bytes(Buffer.from(balanceCBORHex, "hex")).coin().to_str();
             this.setState({balance})
-
         } catch (err) {
             console.log(err)
         }
     }
 
-    /**
-     * Get the address from the wallet into which any spare UTXO should be sent
-     * as change when building transactions.
-     * @returns {Promise<void>}
-     */
     getChangeAddress = async () => {
         try {
             const raw = await this.API.getChangeAddress();
@@ -416,30 +332,19 @@ export default class App extends React.Component
         }
     }
 
-    /**
-     * This is the Staking address into which rewards from staking get paid into
-     * @returns {Promise<void>}
-     */
     getRewardAddresses = async () => {
-
         try {
             const raw = await this.API.getRewardAddresses();
             const rawFirst = raw[0];
             const rewardAddress = Address.from_bytes(Buffer.from(rawFirst, "hex")).to_bech32()
             // console.log(rewardAddress)
             this.setState({rewardAddress})
-
         } catch (err) {
             console.log(err)
         }
     }
 
-    /**
-     * Gets previsouly used addresses
-     * @returns {Promise<void>}
-     */
     getUsedAddresses = async () => {
-
         try {
             const raw = await this.API.getUsedAddresses();
             const rawFirst = raw[0];
@@ -545,11 +450,13 @@ export default class App extends React.Component
                         await this.getRegisteredPubStakeKeys();
                         await this.getUnregisteredPubStakeKeys();
                     }
+                // else if connection failed, reset all state
                 } else {
                     this.setState({walletIsEnabled: false})
                     await this.refreshCIP30State();
                     await this.refreshCIP95State();
                 }
+            // else if there are no wallets found, reset all state
             } else {
                 this.setState({walletIsEnabled: false})
                 await this.refreshCIP30State();
@@ -567,7 +474,6 @@ export default class App extends React.Component
      * @returns {Promise<TransactionBuilder>}
      */
     initTransactionBuilder = async () => {
-
         const txBuilder = TransactionBuilder.new(
             TransactionBuilderConfigBuilder.new()
                 .fee_algo(LinearFee.new(BigNum.from_str(this.protocolParams.linearFee.minFeeA), BigNum.from_str(this.protocolParams.linearFee.minFeeB)))
@@ -579,9 +485,9 @@ export default class App extends React.Component
                 .prefer_pure_change(true)
                 .build()
         );
-
         return txBuilder
     }
+    
     /**
      * Builds an object with all the UTXOs from the user's wallet
      * @returns {Promise<TransactionUnspentOutputs>}
@@ -594,27 +500,16 @@ export default class App extends React.Component
         return txOutputs
     }
 
-    // CIP-95 Parts
     getPubDRepKey = async () => {
         try {
             // From wallet get pub DRep key 
-            const raw = await this.API.cip95.getPubDRepKey();
-            const dRepKey = raw;
-            // console.log("DRep Key: ", dRepKey);
+            const dRepKey = await this.API.cip95.getPubDRepKey();
+            const dRepID = (PublicKey.from_hex(dRepKey)).hash();
             this.setState({dRepKey});
-            
-            // From wallet's DRep key hash to get DRep ID 
-            const dRepKeyBytes = Buffer.from(dRepKey, "hex");
-            const dRepID = ((PublicKey.from_bytes(dRepKeyBytes)).hash());
-            // console.log("DRep ID Hex: ", dRepID);
-            this.setState({dRepID: Buffer.from(dRepID.to_bytes()).toString('hex')});
-
-            // into bech32
-            const words = bech32.toWords(Buffer.from(dRepID.to_bytes()));
-            const dRepIDBech32 = bech32.encode('drep', words);
-            // console.log("DRep ID Bech: ", dRepIDBech32);
+            this.setState({dRepID : dRepID.to_hex()});
+            const dRepIDBech32 = dRepID.to_bech32('drep');
             this.setState({dRepIDBech32});
-
+            // Auto fill vote delegation target with the wallet's DRepID
             this.setState({voteDelegationTarget: dRepIDBech32});
         } catch (err) {
             console.log(err)
@@ -627,39 +522,17 @@ export default class App extends React.Component
             if (raw.length < 1){
                 console.log("No Registered Pub Stake Keys");
             } else {
-
                 // Set array
                 const regStakeKeys = raw;
                 this.setState({regStakeKeys})
-
                 // Just use the first key for now 
                 const regStakeKey = regStakeKeys[0];
-                // console.log("Reg stake Key: ", regStakeKey);
                 this.setState({regStakeKey})
-
-                const stakeKeyBytes = Buffer.from(regStakeKey, 'hex');
-
                 // Hash the stake key
-                const stakeKeyHash = ((PublicKey.from_bytes(stakeKeyBytes)).hash());
-                // console.log("Reg stake Key Hash: ", Buffer.from(stakeKeyHash.to_bytes()).toString('hex'));
-                this.setState({regStakeKeyHashHex: Buffer.from(stakeKeyHash.to_bytes()).toString('hex')});
-
-                // Set default stake key to register as the first unregistered key
-                this.setState({stakeKeyUnreg : Buffer.from(stakeKeyHash.to_bytes()).toString('hex')})
-
-                // Make a StakeCredential from the hash
-                // const stakeCredential = Credential.from_keyhash(stakeKeyHash);
-                // console.log("Reg stake Credential: ", Buffer.from(stakeCredential.to_bytes()).toString('hex'));
-
-                // Make a StakeAddress Hex from the credential
-                // const stakeAddrTestHex = Buffer.from((RewardAddress.new(0, stakeCredential)).to_address().to_bytes()).toString('hex');
-                // const stakeAddrMainHex = Buffer.from((RewardAddress.new(1, stakeCredential)).to_address().to_bytes()).toString('hex');
-                // console.log("Testnet Reg stake Address (Hex): ", stakeAddrTestHex);
-                // console.log("Mainnet Reg stake Address (Hex): ", stakeAddrMainHex);
-
-                // Make a StakeAddress Bech from the credential
-                // console.log("Testnet Reg stake Address (Bech): ", (RewardAddress.new(0, stakeCredential)).to_address().to_bech32());
-                // console.log("Mainnet Reg stake Address (Bech): ", (RewardAddress.new(1, stakeCredential)).to_address().to_bech32());
+                const stakeKeyHash = ((PublicKey.from_hex(regStakeKey)).hash()).to_hex();
+                this.setState({regStakeKeyHashHex: stakeKeyHash});
+                // Set default stake key to unregister as the first registered key
+                this.setState({stakeKeyUnreg : stakeKeyHash});
             }
         } catch (err) {
             console.log(err)
@@ -669,42 +542,20 @@ export default class App extends React.Component
     getUnregisteredPubStakeKeys = async () => {
         try {
             const raw = await this.API.cip95.getUnregisteredPubStakeKeys();
-            // Just use the first key for now
             if (raw.length < 1){
-                // console.log("No Unregistered Pub Stake Keys");
+                // console.log("No Registered Pub Stake Keys");
             } else {
-
                 // Set array
                 const unregStakeKeys = raw;
                 this.setState({unregStakeKeys})
-
+                // Just use the first key for now 
                 const unregStakeKey = unregStakeKeys[0];
-                // console.log("Unreg stake Key: ", unregStakeKey);
                 this.setState({unregStakeKey})
-
-                const stakeKeyBytes = Buffer.from(unregStakeKey, 'hex');
-
                 // Hash the stake key
-                const stakeKeyHash = ((PublicKey.from_bytes(stakeKeyBytes)).hash());
-                // console.log("Unreg stake Key Hash: ", Buffer.from(stakeKeyHash.to_bytes()).toString('hex'));
-                this.setState({unregStakeKeyHashHex: Buffer.from(stakeKeyHash.to_bytes()).toString('hex')});
-
+                const stakeKeyHash = ((PublicKey.from_hex(unregStakeKey)).hash()).to_hex();
+                this.setState({unregStakeKeyHashHex: stakeKeyHash});
                 // Set default stake key to register as the first unregistered key
-                this.setState({stakeKeyReg : Buffer.from(stakeKeyHash.to_bytes()).toString('hex')})
-
-                // Make a StakeCredential from the hash
-                // const stakeCredential = Credential.from_keyhash(stakeKeyHash);
-                // console.log("Unreg stake Credential: ", Buffer.from(stakeCredential.to_bytes()).toString('hex'));
-
-                // Make a StakeAddress Hex from the credential
-                // const stakeAddrTestHex = Buffer.from((RewardAddress.new(0, stakeCredential)).to_address().to_bytes()).toString('hex');
-                // const stakeAddrMainHex = Buffer.from((RewardAddress.new(1, stakeCredential)).to_address().to_bytes()).toString('hex');
-                // console.log("Testnet Unreg stake Address (Hex): ", stakeAddrTestHex);
-                // console.log("Mainnet Unreg stake Address (Hex): ", stakeAddrMainHex);
-
-                // Make a StakeAddress Bech from the credential
-                // console.log("Testnet Unreg stake Address (Bech): ", (RewardAddress.new(0, stakeCredential)).to_address().to_bech32());
-                // console.log("Mainnet Unreg stake Address (Bech): ", (RewardAddress.new(1, stakeCredential)).to_address().to_bech32());
+                this.setState({stakeKeyReg : stakeKeyHash});
             }
         } catch (err) {
             console.log(err)
