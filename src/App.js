@@ -80,10 +80,13 @@ export default class App extends React.Component
             usedAddress: undefined,
             assetNameHex: "4c494645",
             // CIP-95 Stuff
+            supportedExtensions: [],
+            enabledExtensions: [],
             selected95BasicTabId: "1",
             selected95ActionsTabId: "1",
             selected95MiscTabId: "1",
             selectedCIP95: false,
+            // Keys
             dRepKey: undefined,
             dRepID: undefined,
             dRepIDBech32: undefined,
@@ -93,6 +96,7 @@ export default class App extends React.Component
             unregStakeKey: undefined,
             regStakeKeyHashHex: undefined,
             unregStakeKeyHashHex: undefined,
+            // Txs
             cip95ResultTx: "",
             cip95ResultHash: "",
             cip95ResultWitness: "",
@@ -101,21 +105,20 @@ export default class App extends React.Component
             certBuilder: undefined,
             votingBuilder: undefined,
             govActionBuilder: undefined,
+            // Certs
             voteDelegationTarget: "",
-            dRepRetirementEpoch : undefined,
             voteGovActionTxHash: "",
             voteGovActionIndex: "",
             voteChoice: "",
             stakeKeyReg: "",
             stakeKeyUnreg: "",
+            // Gov actions
             constURL: "",
             constHash: "",
             treasuryTarget: "",
             treasuryAmount: "",
             hardForkUpdateMajor: "",
             hardForkUpdateMinor: "",
-            supportedExtensions: [],
-            enabledExtensions: [],
         }
 
         /**
@@ -371,42 +374,46 @@ export default class App extends React.Component
             changeAddress: null,
             rewardAddress: null,
             usedAddress: null,
-            supportedExtensions: "",
-            enabledExtensions: "",
+            supportedExtensions: [],
+            enabledExtensions: [],
         });
     }
 
     refreshCIP95State = async () => {
         await this.setState({
-            dRepKey: "",
-            dRepID: "",
-            dRepIDBech32: "",
+            // Keys
+            dRepKey: undefined,
+            dRepID: undefined,
+            dRepIDBech32: undefined,
             regStakeKeys: [],
             unregStakeKeys: [],
-            regStakeKey: "",
-            unregStakeKey: "",
-            regStakeKeyHashHex: "",
-            unregStakeKeyHashHex: "",
+            regStakeKey: undefined,
+            unregStakeKey: undefined,
+            regStakeKeyHashHex: undefined,
+            unregStakeKeyHashHex: undefined,
+            // Txs
             cip95ResultTx: "",
             cip95ResultHash: "",
             cip95ResultWitness: "",
-            cip95MetadataURL: "",
-            cip95MetadataHash: "",
+            cip95MetadataURL: undefined,
+            cip95MetadataHash: undefined,
             certBuilder: undefined,
             votingBuilder: undefined,
             govActionBuilder: undefined,
+            // Certs
             voteDelegationTarget: "",
             voteGovActionTxHash: "",
             voteGovActionIndex: "",
             voteChoice: "",
             stakeKeyReg: "",
+            stakeKeyUnreg: "",
+            // Gov actions
             constURL: "",
             constHash: "",
             treasuryTarget: "",
             treasuryAmount: "",
             hardForkUpdateMajor: "",
             hardForkUpdateMinor: "",
-            stakeKeyUnreg: "",
         });
     }
 
@@ -1114,8 +1121,8 @@ export default class App extends React.Component
                 <h1>CIP-95 🤠</h1>
                 {/* DRep Key Endpoints */}
                 <p><span style={{fontWeight: "bold"}}>.cip95.getPubDRepKey(): </span>{this.state.dRepKey}</p>
-                <p><span style={{fontWeight: "lighter"}}>Hex DRep ID (Key digest): </span>{this.state.dRepID}</p>
-                <p><span style={{fontWeight: "lighter"}}>Bech32 DRep ID (Key digest): </span>{this.state.dRepIDBech32}</p>
+                <p><span style={{fontWeight: "lighter"}}>Hex DRep ID (Pub DRep Key hash): </span>{this.state.dRepID}</p>
+                <p><span style={{fontWeight: "lighter"}}>Bech32 DRep ID (Pub DRep Key hash): </span>{this.state.dRepIDBech32}</p>
                 {/* Stake Key Endpoints */}
                 <p><span style={{ fontWeight: "bold" }}>.cip95.getRegisteredPubStakeKeys():</span><ul>{this.state.regStakeKeys && this.state.regStakeKeys.length > 0  ? (this.state.regStakeKeys.map((item, index) => (<li style={{ fontSize: "12px" }} key={index}>{item}</li>))) : (<li>No registered public stake keys returned.</li>)}</ul></p>
                 <p><span style={{fontWeight: "lighter"}}> First registered Stake Key Hash (hex): </span>{this.state.regStakeKeyHashHex}</p>
