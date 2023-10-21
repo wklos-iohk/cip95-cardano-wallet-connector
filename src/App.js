@@ -107,6 +107,7 @@ export default class App extends React.Component
             govActionBuilder: undefined,
             // Certs
             voteDelegationTarget: "",
+            voteDelegationStakeCred: "",
             voteGovActionTxHash: "",
             voteGovActionIndex: "",
             voteChoice: "",
@@ -402,6 +403,7 @@ export default class App extends React.Component
             govActionBuilder: undefined,
             // Certs
             voteDelegationTarget: "",
+            voteDelegationStakeCred: "",
             voteGovActionTxHash: "",
             voteGovActionIndex: "",
             voteChoice: "",
@@ -538,6 +540,8 @@ export default class App extends React.Component
                 // Hash the stake key
                 const stakeKeyHash = ((PublicKey.from_hex(regStakeKey)).hash()).to_hex();
                 this.setState({regStakeKeyHashHex: stakeKeyHash});
+                // Set default stake key for vote delegation to the first registered key
+                this.setState({voteDelegationStakeCred : stakeKeyHash});
                 // Set default stake key to unregister as the first registered key
                 this.setState({stakeKeyUnreg : stakeKeyHash});
             }
@@ -704,33 +708,22 @@ export default class App extends React.Component
         }
     }
 
-    buildVoteDelegationCert = async (target) => {
+    buildVoteDelegationCert = async () => {
         try {
             // Build Vote Delegation Certificate using wallets stake credential
             const certBuilder = CertificatesBuilder.new();
-            // Use stake key hash from wallet
-            let stakeKeyHash;
-            if (this.state.regStakeKeyHashHex === "") {
-                console.log("Warning: Using unregistered stake key for vote delegation, this will error when submitting");
-                stakeKeyHash = Ed25519KeyHash.from_hex(this.state.unregStakeKeyHashHex);
-            } else {
-                stakeKeyHash = Ed25519KeyHash.from_hex(this.state.regStakeKeyHashHex);
-            };
-            const stakeCred = Credential.from_keyhash(stakeKeyHash);
+            const stakeCred = Credential.from_keyhash(Ed25519KeyHash.from_hex(this.state.voteDelegationStakeCred));
             // Create correct DRep
             let targetDRep
-            if ((target.dRep).toUpperCase() === 'ABSTAIN') {
+            if ((this.state.voteDelegationTarget).toUpperCase() === 'ABSTAIN') {
                 targetDRep = DRep.new_always_abstain();
-            }else if ((target.dRep).toUpperCase() === 'NO CONFIDENCE') {
+            } else if ((this.state.voteDelegationTarget).toUpperCase() === 'NO CONFIDENCE') {
                 targetDRep = DRep.new_always_no_confidence();
-            }else{
-                targetDRep = DRep.new_key_hash(Ed25519KeyHash.from_bech32(target.dRep));
+            } else {
+                targetDRep = DRep.new_key_hash(Ed25519KeyHash.from_bech32(this.state.voteDelegationTarget));
             };
             // Create cert object
-            const voteDelegationCert = VoteDelegation.new(
-                stakeCred,
-                targetDRep,
-            );
+            const voteDelegationCert = VoteDelegation.new(stakeCred, targetDRep);
             // add cert to txbuilder
             certBuilder.add(Certificate.new_vote_delegation(voteDelegationCert));
             this.setState({certBuilder : certBuilder});
@@ -1147,8 +1140,19 @@ export default class App extends React.Component
                                     value={this.state.voteDelegationTarget}
                                 />
                             </FormGroup>
+                            <FormGroup
+                                label="Stake Credential:"
+                                helperText="Stake key hash"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({voteDelegationStakeCred: event.target.value})}
+                                    value={this.state.voteDelegationStakeCred}
+                                />
+                            </FormGroup>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildVoteDelegationCert({dRep: this.state.voteDelegationTarget}))}>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildVoteDelegationCert())}>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
                     <Tab id="2" title="👷‍♂️ DRep Registration" panel={
