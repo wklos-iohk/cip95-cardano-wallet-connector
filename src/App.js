@@ -85,7 +85,7 @@ export default class App extends React.Component
             selected95BasicTabId: "1",
             selected95ActionsTabId: "1",
             selected95MiscTabId: "1",
-            selectedCIP95: false,
+            selectedCIP95: true,
             // Keys
             dRepKey: undefined,
             dRepID: undefined,
