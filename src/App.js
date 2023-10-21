@@ -108,6 +108,7 @@ export default class App extends React.Component
             // Certs
             voteDelegationTarget: "",
             voteDelegationStakeCred: "",
+            dRepRegTarget: "",
             voteGovActionTxHash: "",
             voteGovActionIndex: "",
             voteChoice: "",
@@ -404,6 +405,7 @@ export default class App extends React.Component
             // Certs
             voteDelegationTarget: "",
             voteDelegationStakeCred: "",
+            dRepRegTarget: "",
             voteGovActionTxHash: "",
             voteGovActionIndex: "",
             voteChoice: "",
@@ -518,7 +520,9 @@ export default class App extends React.Component
             this.setState({dRepID : dRepID.to_hex()});
             const dRepIDBech32 = dRepID.to_bech32('drep');
             this.setState({dRepIDBech32});
-            // Auto fill vote delegation target with the wallet's DRepID
+            // Default use the wallet's DRepID for DRep registration
+            this.setState({dRepRegTarget: dRepIDBech32});
+            // Default use the wallet's DRepID for Vote delegation target
             this.setState({voteDelegationTarget: dRepIDBech32});
         } catch (err) {
             console.log(err)
@@ -668,8 +672,8 @@ export default class App extends React.Component
             this.setState({cip95ResultHash});
             this.setState({cip95ResultWitness});
             // Reset anchor state
-            this.setState({cip95MetadataURL : ""});
-            this.setState({cip95MetadataHash : ""});
+            this.setState({cip95MetadataURL : undefined});
+            this.setState({cip95MetadataHash : undefined});
 
         } catch (err) {
             console.log("Error during build, sign and submit transaction");
@@ -712,7 +716,7 @@ export default class App extends React.Component
         try {
             // Build Vote Delegation Certificate using wallets stake credential
             const certBuilder = CertificatesBuilder.new();
-            const stakeCred = Credential.from_keyhash(Ed25519KeyHash.from_hex(this.state.voteDelegationStakeCred));
+            const stakeCred = await this.handleInputToCredential(this.state.voteDelegationStakeCred);
             // Create correct DRep
             let targetDRep
             if ((this.state.voteDelegationTarget).toUpperCase() === 'ABSTAIN') {
@@ -720,7 +724,8 @@ export default class App extends React.Component
             } else if ((this.state.voteDelegationTarget).toUpperCase() === 'NO CONFIDENCE') {
                 targetDRep = DRep.new_always_no_confidence();
             } else {
-                targetDRep = DRep.new_key_hash(Ed25519KeyHash.from_bech32(this.state.voteDelegationTarget));
+                const dRepKeyCred = await this.handleInputToCredential(this.state.voteDelegationTarget)
+                targetDRep = DRep.new_key_hash(dRepKeyCred.to_keyhash());
             };
             // Create cert object
             const voteDelegationCert = VoteDelegation.new(stakeCred, targetDRep);
@@ -734,28 +739,42 @@ export default class App extends React.Component
         }
     }
 
+    handleInputToCredential = async (input) => {
+        try {
+          const keyHash = Ed25519KeyHash.from_hex(input);
+          const cred = Credential.from_keyhash(keyHash);
+          return cred;
+        } catch (err1) {
+          try {
+            const keyHash = Ed25519KeyHash.from_bech32(input);
+            const cred = Credential.from_keyhash(keyHash);
+            return cred;
+          } catch (err2) {
+            console.error('Error in parsing credential, not Hex or Bech32:', err1, err2);
+            return null;
+          }
+        }
+    }
+
     buildDRepRegCert = async () => {
         try {
             // Build DRep Registration Certificate
             const certBuilder = CertificatesBuilder.new();
-            // Get wallet's DRep key
-            const dRepKeyHash = Ed25519KeyHash.from_hex(this.state.dRepID);
-            const dRepCred = Credential.from_keyhash(dRepKeyHash);
-
+            const dRepCred = await this.handleInputToCredential(this.state.dRepRegTarget);
             let dRepRegCert;
             // If there is an anchor
-            if (!(this.state.cip95MetadataURL === "" && this.state.cip95MetadataHash === "")) {
+            if (this.state.cip95MetadataURL && this.state.cip95MetadataHash) {
                 const anchorURL = URL.new(this.state.cip95MetadataURL);
                 const anchorHash = AnchorDataHash.from_hex(this.state.cip95MetadataHash);
                 const anchor = Anchor.new(anchorURL, anchorHash);
-                // Create cert object using one Ada as the deposit
+                // Create cert object
                 dRepRegCert = DrepRegistration.new_with_anchor(
                     dRepCred,
-                    BigNum.from_str("0"), // deposit
+                    BigNum.from_str("0"),
                     anchor
                 );
-            }else{
-                console.log("DRep Registration - not using anchor")
+            // Else there is no anchor
+            } else {
                 dRepRegCert = DrepRegistration.new(
                     dRepCred,
                     BigNum.from_str("0"),
@@ -775,18 +794,17 @@ export default class App extends React.Component
         try {
             // Build DRep Registration Certificate
             const certBuilder = CertificatesBuilder.new();
-
             // Get wallet's DRep key
             const dRepKeyHash = Ed25519KeyHash.from_hex(this.state.dRepID);
             const dRepCred = Credential.from_keyhash(dRepKeyHash);
 
             let dRepUpdateCert;
             // If there is an anchor
-            if (!(this.state.cip95MetadataURL === "" && this.state.cip95MetadataHash === "")) {
+            if (this.state.cip95MetadataURL && this.state.cip95MetadataHash) {
                 const anchorURL = URL.new(this.state.cip95MetadataURL);
                 const anchorHash = AnchorDataHash.from_hex(this.state.cip95MetadataHash);
                 const anchor = Anchor.new(anchorURL, anchorHash);
-                // Create cert object using one Ada as the deposit
+                // Create cert object
                 dRepUpdateCert = DrepUpdate.new_with_anchor(
                     dRepCred,
                     anchor
@@ -1142,7 +1160,7 @@ export default class App extends React.Component
                             </FormGroup>
                             <FormGroup
                                 label="Stake Credential:"
-                                helperText="Stake key hash"
+                                helperText="(Bech32 or Hex encoded)"
                             >
                                 <InputGroup
                                     disabled={false}
@@ -1157,6 +1175,18 @@ export default class App extends React.Component
                     } />
                     <Tab id="2" title="👷‍♂️ DRep Registration" panel={
                         <div style={{marginLeft: "20px"}}>
+
+                            <FormGroup
+                                label="DRep ID:"
+                                helperText="(Bech32 or Hex encoded)"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({dRepRegTarget: event.target.value})}
+                                    value={this.state.dRepRegTarget}
+                                />
+                            </FormGroup>
 
                             <FormGroup
                                 helperText=""
