@@ -74,77 +74,48 @@ export default class App extends React.Component
             walletIcon: undefined,
             walletAPIVersion: undefined,
             wallets: [],
-
             networkId: undefined,
             Utxos: undefined,
-            CollatUtxos: undefined,
             balance: undefined,
             changeAddress: undefined,
             rewardAddress: undefined,
             usedAddress: undefined,
-
             assetNameHex: "4c494645",
-            assetPolicyIdHex: "ae02017105527c6c0c9840397a39cc5ca39fabe5b9998ba70fda5f2f",
-            assetAmountToSend: 5,
-            addressScriptBech32: "addr_test1wpnlxv2xv9a9ucvnvzqakwepzl9ltx7jzgm53av2e9ncv4sysemm8",
-            datumStr: "12345678",
-            plutusScriptCborHex: "4e4d01000033222220051200120011",
-            transactionIdLocked: "",
-            transactionIndxLocked: 0,
-            lovelaceLocked: 3000000,
-            manualFee: 900000,
-
             // CIP-95 Stuff
             selected95BasicTabId: "1",
             selected95ActionsTabId: "1",
             selected95MiscTabId: "1",
             selectedCIP95: false,
-            // DRep key items
             dRepKey: undefined,
             dRepID: undefined,
             dRepIDBech32: undefined,
-            // stake key items
             regStakeKeys: [],
             unregStakeKeys: [],
             regStakeKey: undefined,
             unregStakeKey: undefined,
             regStakeKeyHashHex: undefined,
             unregStakeKeyHashHex: undefined,
-            // transaction items
             cip95ResultTx: "",
             cip95ResultHash: "",
             cip95ResultWitness: "",
             cip95MetadataURL: undefined,
             cip95MetadataHash: undefined,
-            
-            // Conway Alpha
-            certBuilder: "",
-            votingBuilder: "",
-            govActionBuilder: "",
-
-            // vote delegation
+            certBuilder: undefined,
+            votingBuilder: undefined,
+            govActionBuilder: undefined,
             voteDelegationTarget: "",
-        
-            // DRep Retirement
             dRepRetirementEpoch : undefined,
-
-            // vote
             voteGovActionTxHash: "",
             voteGovActionIndex: "",
             voteChoice: "",
-
             stakeKeyReg: "",
             stakeKeyUnreg: "",
-
             constURL: "",
             constHash: "",
-
             treasuryTarget: "",
             treasuryAmount: "",
-
             hardForkUpdateMajor: "",
             hardForkUpdateMinor: "",
-
             supportedExtensions: [],
             enabledExtensions: [],
         }
@@ -255,7 +226,6 @@ export default class App extends React.Component
      */
     checkIfWalletEnabled = async () => {
         let walletIsEnabled = false;
-
         try {
             const walletName = this.state.whichWalletSelected;
             walletIsEnabled = await window.cardano[walletName].isEnabled();
@@ -263,7 +233,6 @@ export default class App extends React.Component
             console.log(err)
         }
         this.setState({walletIsEnabled});
-
         return walletIsEnabled;
     }
 
@@ -326,7 +295,6 @@ export default class App extends React.Component
         try {
             const enabledExtensions = await this.API.getExtensions();
             this.setState({enabledExtensions})
-
         } catch (err) {
             console.log(err)
         }
@@ -398,8 +366,6 @@ export default class App extends React.Component
                         }
                     }
                 }
-
-
                 const obj = {
                     txid: txid,
                     txindx: txindx,
@@ -486,176 +452,108 @@ export default class App extends React.Component
     }
 
     checkIfCIP95MethodsAvailable = async () => {
-        const hasCIP95Methods =( this.API.cip95.hasOwnProperty('getPubDRepKey'));
-        // console.log(`Has CIP95 .getPubDRepKey(): ${hasCIP95Methods}`)
+        const hasCIP95Methods = ( 
+            this.API.cip95.hasOwnProperty('getPubDRepKey') 
+            && this.API.cip95.hasOwnProperty('getRegisteredPubStakeKeys')
+            && this.API.cip95.hasOwnProperty('getUnregisteredPubStakeKeys'));
         return hasCIP95Methods;
     }
+
+    refreshCIP30State = async () => {
+        await this.setState({
+            Utxos: null,
+            balance: null,
+            changeAddress: null,
+            rewardAddress: null,
+            usedAddress: null,
+            supportedExtensions: "",
+            enabledExtensions: "",
+        });
+    }
+
+    refreshCIP95State = async () => {
+        await this.setState({
+            dRepKey: "",
+            dRepID: "",
+            dRepIDBech32: "",
+            regStakeKeys: [],
+            unregStakeKeys: [],
+            regStakeKey: "",
+            unregStakeKey: "",
+            regStakeKeyHashHex: "",
+            unregStakeKeyHashHex: "",
+            cip95ResultTx: "",
+            cip95ResultHash: "",
+            cip95ResultWitness: "",
+            cip95MetadataURL: "",
+            cip95MetadataHash: "",
+            certBuilder: undefined,
+            votingBuilder: undefined,
+            govActionBuilder: undefined,
+            voteDelegationTarget: "",
+            voteGovActionTxHash: "",
+            voteGovActionIndex: "",
+            voteChoice: "",
+            stakeKeyReg: "",
+            constURL: "",
+            constHash: "",
+            treasuryTarget: "",
+            treasuryAmount: "",
+            hardForkUpdateMajor: "",
+            hardForkUpdateMinor: "",
+            stakeKeyUnreg: "",
+        });
+    }
+
     /**
      * Refresh all the data from the user's wallet
      * @returns {Promise<void>}
      */
     refreshData = async () => {
-
-        try{
+        try {
             const walletFound = this.checkIfWalletFound();
-
-            if (walletFound && this.state.selectedCIP95) {
+            // If wallet found and CIP-95 selected perform CIP-30 initial API calls
+            if (walletFound) {
                 await this.getAPIVersion();
                 await this.getWalletName();
                 this.getSupportedExtensions();
-                const walletEnabled = await this.enableCIP95Wallet();
-                const hasCIP95Methods = await this.checkIfCIP95MethodsAvailable();
-
-                if (walletEnabled && hasCIP95Methods) {
+                // If CIP-95 checkbox selected attempt to connect to wallet with CIP-95
+                let walletEnabled;
+                let hasCIP95Methods;
+                if (this.state.selectedCIP95) {
+                    walletEnabled = await this.enableCIP95Wallet();
+                    hasCIP95Methods = await this.checkIfCIP95MethodsAvailable();
+                } else {
+                    // else connect to wallet without CIP-95
+                    walletEnabled = await this.enableWallet()
+                    await this.refreshCIP95State();
+                }
+                // If wallet is enabled/connected
+                if (walletEnabled) {
+                    // CIP-30 API calls
                     await this.getNetworkId();
                     await this.getUtxos();
                     await this.getBalance();
                     await this.getChangeAddress();
                     await this.getRewardAddresses();
                     await this.getUsedAddresses();
-                    await this.getPubDRepKey();
-                    await this.getRegisteredPubStakeKeys();
-                    await this.getUnregisteredPubStakeKeys();
                     await this.getEnabledExtensions();
-                } else {
-                    await this.setState({
-                        Utxos: null,
-                        CollatUtxos: null,
-                        balance: null,
-                        changeAddress: null,
-                        rewardAddress: null,
-                        usedAddress: null,
-
-                        dRepKey: "",
-                        dRepID: "",
-                        dRepIDBech32: "",
-                        regStakeKeys: [],
-                        unregStakeKeys: [],
-                        regStakeKey: "",
-                        unregStakeKey: "",
-                        regStakeKeyHashHex: "",
-                        unregStakeKeyHashHex: "",
-                        cip95ResultTx: "",
-                        cip95ResultHash: "",
-                        cip95ResultWitness: "",
-                        cip95MetadataURL: "",
-                        cip95MetadataHash: "",
-                        certBuilder: "",
-                        votingBuilder: "",
-                        govActionBuilder: "",
-                        voteDelegationTarget: "",
-                        voteGovActionTxHash: "",
-                        voteGovActionIndex: "",
-                        voteChoice: "",
-                        stakeKeyReg: "",
-                        stakeKeyUnreg: "",
-                        constURL: "",
-                        constHash: "",
-                        treasuryTarget: "",
-                        treasuryAmount: "",
-                        hardForkUpdateMajor: "",
-                        hardForkUpdateMinor: "",
-                        supportedExtensions: [],
-                        enabledExtensions: [],
-                    });
-                }
-            } else if (walletFound) {
-                    await this.getAPIVersion();
-                    await this.getWalletName();
-                    this.getSupportedExtensions();
-                    const walletEnabled = await this.enableWallet();
-                    if (walletEnabled) {
-                        await this.getNetworkId();
-                        await this.getUtxos();
-                        await this.getBalance();
-                        await this.getChangeAddress();
-                        await this.getRewardAddresses();
-                        await this.getUsedAddresses();
-                        await this.getEnabledExtensions();
-                    } else {
-                        await this.setState({
-                            Utxos: null,
-                            CollatUtxos: null,
-                            balance: null,
-                            changeAddress: null,
-                            rewardAddress: null,
-                            usedAddress: null,
-    
-                            dRepKey: "",
-                            dRepID: "",
-                            dRepIDBech32: "",
-                            regStakeKeys: [],
-                            unregStakeKeys: [],
-                            regStakeKey: "",
-                            unregStakeKey: "",
-                            regStakeKeyHashHex: "",
-                            unregStakeKeyHashHex: "",
-                            cip95ResultTx: "",
-                            cip95ResultHash: "",
-                            cip95ResultWitness: "",
-                            certBuilder: "",
-                            votingBuilder: "",
-                            govActionBuilder: "",
-                            cip95MetadataURL: "",
-                            cip95MetadataHash: "",
-                            voteDelegationTarget: "",
-                            voteGovActionTxHash: "",
-                            voteGovActionIndex: "",
-                            voteChoice: "",
-                            stakeKeyReg: "",
-                            constURL: "",
-                            constHash: "",
-                            treasuryTarget: "",
-                            treasuryAmount: "",
-                            hardForkUpdateMajor: "",
-                            hardForkUpdateMinor: "",
-                            stakeKeyUnreg: "",
-                            supportedExtensions: [],
-                            enabledExtensions: [],
-                        });
+                    // If connection was CIP95 and wallet has CIP95 methods
+                    if (hasCIP95Methods) {
+                        // CIP-95 API calls
+                        await this.getPubDRepKey();
+                        await this.getRegisteredPubStakeKeys();
+                        await this.getUnregisteredPubStakeKeys();
                     }
+                } else {
+                    this.setState({walletIsEnabled: false})
+                    await this.refreshCIP30State();
+                    await this.refreshCIP95State();
+                }
             } else {
-                await this.setState({
-                    walletIsEnabled: false,
-
-                    Utxos: null,
-                    CollatUtxos: null,
-                    balance: null,
-                    changeAddress: null,
-                    rewardAddress: null,
-                    usedAddress: null,
-
-                    dRepKey: "",
-                    dRepID: "",
-                    dRepIDBech32: "",
-                    regStakeKeys: [],
-                    unregStakeKeys: [],
-                    regStakeKey: "",
-                    unregStakeKey: "",
-                    regStakeKeyHashHex: "",
-                    unregStakeKeyHashHex: "",
-                    cip95ResultTx: "",
-                    cip95ResultHash: "",
-                    cip95ResultWitness: "",
-                    cip95MetadataURL: "",
-                    cip95MetadataHash: "",
-                    certBuilder: "",
-                    votingBuilder: "",
-                    voteDelegationTarget: "",
-                    voteGovActionTxHash: "",
-                    voteGovActionIndex: "",
-                    voteChoice: "",
-                    stakeKeyReg: "",
-                    constURL: "",
-                    constHash: "",
-                    treasuryTarget: "",
-                    treasuryAmount: "",
-                    hardForkUpdateMajor: "",
-                    hardForkUpdateMinor: "",
-                    stakeKeyUnreg: "",
-                    supportedExtensions: "",
-                    enabledExtensions: "",
-                });
+                this.setState({walletIsEnabled: false})
+                await this.refreshCIP30State();
+                await this.refreshCIP95State();
             }
         } catch (err) {
             console.log(err)
@@ -832,29 +730,27 @@ export default class App extends React.Component
     }
 
     buildSubmitConwayTx = async (builderSuccess) => {
-        try {  
-
+        try {
+            // Abort if error before building Tx
             if (!(await builderSuccess)){
                 throw "Error before building Tx, aborting Tx build."
             }
-
             // Initialize builder with protocol parameters
             const txBuilder = await this.initTransactionBuilder();
-
-            // Set the certificate to the current certbuilder
-            if(!(this.state.certBuilder === "")){
+            // Add certs, votes or gov actions to the transaction
+            if(this.state.certBuilder){
                 txBuilder.set_certs_builder(this.state.certBuilder);
-                this.setState({certBuilder : ""});
+                this.setState({certBuilder : undefined});
             }
-            if(!(this.state.votingBuilder === "")){
+            if(this.state.votingBuilder){
                 txBuilder.set_voting_builder(this.state.votingBuilder);
-                this.setState({votingBuilder : ""});
+                this.setState({votingBuilder : undefined});
             }
-            if(!(this.state.govActionBuilder === "")){
+            if(this.state.govActionBuilder){
                 txBuilder.set_voting_proposal_builder(this.state.govActionBuilder);
-                this.setState({govActionBuilder : ""});
+                this.setState({govActionBuilder : undefined});
             }
-
+            
             // Set output and change addresses to those of our wallet
             const shelleyOutputAddress = Address.from_bech32(this.state.usedAddress);
             const shelleyChangeAddress = Address.from_bech32(this.state.changeAddress);
@@ -867,9 +763,10 @@ export default class App extends React.Component
                     Value.new(BigNum.from_str("3000000"))
                 ),
             );
-            // Find the available UTXOs in the wallet and use them as Inputs for the transaction
+            // Find the available UTxOs in the wallet and use them as Inputs for the transaction
+            await this.getUtxos();
             const txUnspentOutputs = await this.getTxUnspentOutputs();
-            // Use UTxO selection strategy 2 if 1 not possible
+            // Use UTxO selection strategy 2
             txBuilder.add_inputs_from(txUnspentOutputs, 2)
 
             // Set change address, incase too much ADA provided for fee
@@ -882,8 +779,6 @@ export default class App extends React.Component
                 txBody,
                 TransactionWitnessSet.from_bytes(transactionWitnessSet.to_bytes()),
             );
-
-            // console.log("UnSigned Tx: ", tx.to_json());
 
             // Ask wallet to to provide signature (witnesses) for the transaction
             let txVkeyWitnesses;
@@ -1323,7 +1218,7 @@ export default class App extends React.Component
                 <h1>✨demos CIP-95 dApp✨</h1>
                 <h4>✨v1.5.6✨</h4>
 
-                <input type="checkbox" onChange={this.handleCIP95Select}/> Enable CIP-95?
+                <input type="checkbox" checked={this.state.selectedCIP95} onChange={this.handleCIP95Select}/> Enable CIP-95?
 
                 <div style={{paddingTop: "10px"}}>
                     <div style={{marginBottom: 15}}>Select wallet:</div>
