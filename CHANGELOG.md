@@ -1,5 +1,8 @@
 # Tags
 
+### 1.5.8
+- Added new Conway Stake Reg and Unreg certs
+
 ### 1.5.7
 - Bump to CSL alpha 11
 - UI refresh

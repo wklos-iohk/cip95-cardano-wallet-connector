@@ -112,6 +112,8 @@ class App extends React.Component {
             voteGovActionIndex: "",
             voteChoice: "",
             stakeKeyReg: "",
+            stakeKeyCoin: "",
+            stakeKeyWithCoin: false,
             stakeKeyUnreg: "",
             // Gov actions
             constURL: "",
@@ -409,6 +411,8 @@ class App extends React.Component {
             voteGovActionIndex: "",
             voteChoice: "",
             stakeKeyReg: "",
+            stakeKeyCoin: "",
+            stakeKeyWithCoin: false,
             stakeKeyUnreg: "",
             // Gov actions
             constURL: "",
@@ -685,8 +689,15 @@ class App extends React.Component {
         try {
             const certBuilder = CertificatesBuilder.new();
             const stakeKeyHash = Ed25519KeyHash.from_hex(this.state.stakeKeyReg);
-            const stakeKeyRegCert = StakeRegistration.new(Credential.from_keyhash(stakeKeyHash));
-            // Add cert to txbuilder
+            // use new stake reg cert with coin
+            let stakeKeyRegCert;
+            if (this.state.stakeKeyWithCoin){
+                stakeKeyRegCert = StakeRegistration.new_with_coin(Credential.from_keyhash(stakeKeyHash), BigNum.from_str(this.state.stakeKeyCoin));
+            } else {
+                this.protocolParams.keyDeposit = this.state.stakeKeyCoin
+                stakeKeyRegCert = StakeRegistration.new(Credential.from_keyhash(stakeKeyHash));
+            }
+            // Add cert to certbuilder
             certBuilder.add(Certificate.new_stake_registration(stakeKeyRegCert));
             this.setState({certBuilder : certBuilder});
             return true;
@@ -700,8 +711,15 @@ class App extends React.Component {
         try {
             const certBuilder = CertificatesBuilder.new();
             const stakeKeyHash = Ed25519KeyHash.from_hex(this.state.stakeKeyUnreg);
-            const stakeKeyUnregCert = StakeDeregistration.new(Credential.from_keyhash(stakeKeyHash));
-            // Add cert to txbuilder
+            // use new stake unreg cert with coin
+            let stakeKeyUnregCert;
+            if (this.state.stakeKeyWithCoin){
+                stakeKeyUnregCert = StakeDeregistration.new_with_coin(Credential.from_keyhash(stakeKeyHash), BigNum.from_str(this.state.stakeKeyCoin));
+            } else {
+                this.protocolParams.keyDeposit = this.state.stakeKeyCoin
+                stakeKeyUnregCert = StakeDeregistration.new(Credential.from_keyhash(stakeKeyHash));
+            }
+            // Add cert to certbuilder
             certBuilder.add(Certificate.new_stake_deregistration(stakeKeyUnregCert));
             this.setState({certBuilder : certBuilder});
             return true;
@@ -1077,7 +1095,8 @@ class App extends React.Component {
             <div style={{margin: "20px"}}>
 
                 <h1>✨demos CIP-95 dApp✨</h1>
-                <h4>✨v1.5.7✨</h4>
+                <h4>✨v1.5.8✨</h4>
+
 
                 <input type="checkbox" checked={this.state.selectedCIP95} onChange={this.handleCIP95Select}/> Enable CIP-95?
 
@@ -1574,9 +1593,19 @@ class App extends React.Component {
                     <Tab id="1" title="🔑 Register Stake Key" panel={
                         <div style={{marginLeft: "20px"}}>
 
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    style={{ paddingRight: "10px" }}
+                                    checked={this.state.stakeKeyWithCoin}
+                                    onChange={() => this.setState({ stakeKeyWithCoin: !this.state.stakeKeyWithCoin })}
+                                />
+                                <span style={{ paddingLeft: '10px' }}>Use the new Conway Stake Registration Certificate (with coin)</span>
+                            </label>
+
                             <FormGroup
-                                helperText=""
                                 label="Stake Key Hash"
+                                style={{ paddingTop: "10px" }}
                             >
                                 <InputGroup
                                     disabled={false}
@@ -1585,16 +1614,38 @@ class App extends React.Component {
                                     value={this.state.stakeKeyReg}
                                 />
                             </FormGroup>
+                            <FormGroup
+                                helperText="This should align with current protocol parameters (in lovelace)"
+                                label="Stake Key Deposit Amount"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({stakeKeyCoin : event.target.value})}
+                                    value={this.state.stakeKeyCoin}
+                                />
+                            </FormGroup>
+
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildStakeKeyRegCert()) }>Build, .signTx() and .submitTx()</button>
 
                         </div>
                     } />
                     <Tab id="2" title="🚫🔑 Unregister Stake Key" panel={
                         <div style={{marginLeft: "20px"}}>
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    style={{ paddingRight: "10px" }}
+                                    checked={this.state.stakeKeyWithCoin}
+                                    onChange={() => this.setState({ stakeKeyWithCoin: !this.state.stakeKeyWithCoin })}
+                                />
+                                 <span style={{ paddingLeft: '10px' }}>Use the new Conway Stake Unregisteration Certificate (with coin)</span>
+                            </label>
 
                             <FormGroup
                                 helperText=""
                                 label="Stake Key Hash"
+                                style={{ paddingTop: "10px" }}
                             >
                                 <InputGroup
                                     disabled={false}
@@ -1603,8 +1654,20 @@ class App extends React.Component {
                                     value={this.state.stakeKeyUnreg}
                                 />
                             </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildStakeKeyUnregCert()) }>Build, .signTx() and .submitTx()</button>
+                            
+                            <FormGroup
+                                helperText="This should align with how much was paid during registration (in lovelace)"
+                                label="Stake Key Deposit Refund Amount"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({stakeKeyCoin : event.target.value})}
+                                    value={this.state.stakeKeyCoin}
+                                />
+                            </FormGroup>
 
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildStakeKeyUnregCert()) }>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
                     <Tab id="3" title=" 💯 Test Basic Transaction" panel={
