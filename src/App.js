@@ -55,6 +55,15 @@ import {
     ProtocolVersion,
 } from "@emurgo/cardano-serialization-lib-asmjs"
 import "./App.css";
+import {
+    buildStakeKeyRegCert,
+    buildStakeKeyUnregCert,
+    buildStakeVoteDelegCert,
+    buildStakeRegDelegCert,
+    buildStakeRegVoteDelegCert,
+    buildStakeRegStakeVoteDelegCert,
+} from './utils.js';
+
 let Buffer = require('buffer/').Buffer
 
 class App extends React.Component {
@@ -115,6 +124,8 @@ class App extends React.Component {
             stakeKeyCoin: "",
             stakeKeyWithCoin: false,
             stakeKeyUnreg: "",
+            // Combo certs
+            stakeDelegationTarget: "",
             // Gov actions
             constURL: "",
             constHash: "",
@@ -414,6 +425,8 @@ class App extends React.Component {
             stakeKeyCoin: "",
             stakeKeyWithCoin: false,
             stakeKeyUnreg: "",
+            // Combo certs
+            stakeDelegationTarget: "",
             // Gov actions
             constURL: "",
             constHash: "",
@@ -685,49 +698,68 @@ class App extends React.Component {
         }
     }
 
-    buildStakeKeyRegCert = async () => {
-        try {
-            const certBuilder = CertificatesBuilder.new();
-            const stakeKeyHash = Ed25519KeyHash.from_hex(this.state.stakeKeyReg);
-            // use new stake reg cert with coin
-            let stakeKeyRegCert;
-            if (this.state.stakeKeyWithCoin){
-                stakeKeyRegCert = StakeRegistration.new_with_coin(Credential.from_keyhash(stakeKeyHash), BigNum.from_str(this.state.stakeKeyCoin));
-            } else {
-                this.protocolParams.keyDeposit = this.state.stakeKeyCoin
-                stakeKeyRegCert = StakeRegistration.new(Credential.from_keyhash(stakeKeyHash));
-            }
-            // Add cert to certbuilder
-            certBuilder.add(Certificate.new_stake_registration(stakeKeyRegCert));
-            this.setState({certBuilder : certBuilder});
+    addStakeKeyRegCert = async () => {
+        const certBuilder = CertificatesBuilder.new();
+
+        const certBuilderWithStakeReg = buildStakeKeyRegCert(
+            certBuilder, 
+            this.state.stakeKeyReg,
+            this.state.stakeKeyWithCoin,
+            this.state.stakeKeyCoin,
+        );
+            
+        // messy having this here
+        if (!this.state.stakeKeyWithCoin){
+            this.protocolParams.keyDeposit = this.state.stakeKeyCoin
+        }
+        if (certBuilderWithStakeReg){
+            this.setState({certBuilder : certBuilderWithStakeReg});
             return true;
-        } catch (err) {
-            console.log(err);
+        } else {
             return false;
         }
     }
 
-    buildStakeKeyUnregCert = async () => {
-        try {
-            const certBuilder = CertificatesBuilder.new();
-            const stakeKeyHash = Ed25519KeyHash.from_hex(this.state.stakeKeyUnreg);
-            // use new stake unreg cert with coin
-            let stakeKeyUnregCert;
-            if (this.state.stakeKeyWithCoin){
-                stakeKeyUnregCert = StakeDeregistration.new_with_coin(Credential.from_keyhash(stakeKeyHash), BigNum.from_str(this.state.stakeKeyCoin));
-            } else {
-                this.protocolParams.keyDeposit = this.state.stakeKeyCoin
-                stakeKeyUnregCert = StakeDeregistration.new(Credential.from_keyhash(stakeKeyHash));
-            }
-            // Add cert to certbuilder
-            certBuilder.add(Certificate.new_stake_deregistration(stakeKeyUnregCert));
-            this.setState({certBuilder : certBuilder});
+
+    addStakeKeyUnregCert = async () => {
+        const certBuilder = CertificatesBuilder.new();
+        const certBuilderWithStakeUnreg = buildStakeKeyUnregCert(
+            certBuilder, 
+            this.state.stakeKeyUnreg,
+            this.state.stakeKeyWithCoin,
+            this.state.stakeKeyCoin,
+        );
+        // messy having this here
+        if (!this.state.stakeKeyWithCoin){
+            this.protocolParams.keyDeposit = this.state.stakeKeyCoin
+        }
+        if (certBuilderWithStakeUnreg){
+            this.setState({certBuilder : certBuilderWithStakeUnreg});
             return true;
-        } catch (err) {
-            console.log(err);
+        } else {
             return false;
         }
     }
+
+    addStakeVoteDelegCert = async () => {
+        const certBuilder = CertificatesBuilder.new();
+        const certBuilderWithStakeVoteDeleg = buildStakeVoteDelegCert(
+            certBuilder, 
+            this.state.voteDelegationStakeCred,
+            '63b49197a85d0ed90c3173d6ffc27a5c5455eb3c800c2a710d2bbd9c',
+            this.state.voteDelegationTarget,
+        );
+        if (certBuilderWithStakeVoteDeleg){
+            this.setState({certBuilder : certBuilderWithStakeVoteDeleg});
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    // buildStakeRegDelegCert,
+    // buildStakeRegVoteDelegCert,
+    // buildStakeRegStakeVoteDelegCert,
 
     buildVoteDelegationCert = async () => {
         try {
@@ -1586,6 +1618,55 @@ class App extends React.Component {
                 <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
 
                 <p><span style={{fontWeight: "bold"}}>Use CIP-95 .signTx(): </span></p>
+                <p><span style={{fontWeight: "lighter"}}> Combination Certificates</span></p>
+
+                <Tabs id="cip95-combo" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95MiscTabId}>
+                    <Tab id="1" title="Stake Delegation and Vote Delegation Certificate" panel={
+                        <div style={{marginLeft: "20px"}}>
+                            <FormGroup
+                                label="Target of Pool (keyhash):"
+                                helperText="(Bech32 or Hex encoded)"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({stakeDelegationTarget: event.target.value})}
+                                    value={this.state.stakeDelegationTarget}
+                                />
+                            </FormGroup>
+                            <FormGroup
+                                label="Target of Vote Delegation:"
+                                helperText="DRep ID | abstain | no confidence"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({voteDelegationTarget: event.target.value})}
+                                    value={this.state.voteDelegationTarget}
+                                />
+                            </FormGroup>
+                            <FormGroup
+                                label="Stake Credential:"
+                                helperText="(Bech32 or Hex encoded)"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({voteDelegationStakeCred: event.target.value})}
+                                    value={this.state.voteDelegationStakeCred}
+                                />
+                            </FormGroup>
+
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.addStakeVoteDelegCert()) }>Build, .signTx() and .submitTx()</button>
+                        </div>
+                    } />
+
+                    <Tabs.Expander />
+                </Tabs>
+
+
+                <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
+                <p><span style={{fontWeight: "bold"}}>Use CIP-95 .signTx(): </span></p>
                 <p><span style={{fontWeight: "lighter"}}> Random Stuff</span></p>
                 
                 <Tabs id="cip95-misc" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95MiscTabId}>
@@ -1625,7 +1706,7 @@ class App extends React.Component {
                                 />
                             </FormGroup>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildStakeKeyRegCert()) }>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.addStakeKeyRegCert()) }>Build, .signTx() and .submitTx()</button>
 
                         </div>
                     } />
@@ -1666,7 +1747,7 @@ class App extends React.Component {
                                 />
                             </FormGroup>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildStakeKeyUnregCert()) }>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.addStakeKeyUnregCert()) }>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
                     <Tab id="3" title=" 💯 Test Basic Transaction" panel={
