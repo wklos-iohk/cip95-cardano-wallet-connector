@@ -117,7 +117,7 @@ export function buildStakeVoteDelegCert(certBuilder, stakeCredential, poolHash, 
 }
 
 // Stake Registration and Stake Delegation Cert
-export function buildStakeRegDelegCert(certBuilder, stakeCredential, poolHash, deposit="2") {
+export function buildStakeRegDelegCert(certBuilder, stakeCredential, poolHash, deposit="2000000") {
     try {
         const stakeCred = keyHashStringToCredential(stakeCredential);
         const poolId = keyHashStringToCredential(poolHash).to_keyhash();
@@ -132,7 +132,7 @@ export function buildStakeRegDelegCert(certBuilder, stakeCredential, poolHash, d
 }
 
 // Stake Registration and Vote Delegation Cert
-export function buildStakeRegVoteDelegCert(certBuilder, stakeCredential, dRep, deposit="2") {
+export function buildStakeRegVoteDelegCert(certBuilder, stakeCredential, dRep, deposit="2000000") {
     try {
         const stakeCred = keyHashStringToCredential(stakeCredential);
         const targetDRep = stringToDRep(dRep);
@@ -147,7 +147,7 @@ export function buildStakeRegVoteDelegCert(certBuilder, stakeCredential, dRep, d
 }
 
 // Stake Registration, Stake Delegation and Vote Delegation Cert
-export function buildStakeRegStakeVoteDelegCert(certBuilder, stakeCredential, poolHash, dRep, deposit="2") {
+export function buildStakeRegStakeVoteDelegCert(certBuilder, stakeCredential, poolHash, dRep, deposit="2000000") {
     try {
         const stakeCred = keyHashStringToCredential(stakeCredential);
         const poolId = keyHashStringToCredential(poolHash).to_keyhash();

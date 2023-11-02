@@ -38,8 +38,6 @@ import {
     Constitution,
     AnchorDataHash,
     URL,
-    StakeRegistration,
-    StakeDeregistration,
     GovernanceAction,
     InfoAction,
     TreasuryWithdrawals,
@@ -125,7 +123,10 @@ class App extends React.Component {
             stakeKeyWithCoin: false,
             stakeKeyUnreg: "",
             // Combo certs
-            stakeDelegationTarget: "",
+            comboPoolHash: "",
+            comboStakeCred: "",
+            comboStakeRegCoin: "",
+            comboVoteDelegTarget: "",
             // Gov actions
             constURL: "",
             constHash: "",
@@ -426,7 +427,10 @@ class App extends React.Component {
             stakeKeyWithCoin: false,
             stakeKeyUnreg: "",
             // Combo certs
-            stakeDelegationTarget: "",
+            comboPoolHash: "",
+            comboStakeCred: "",
+            comboStakeRegCoin: "",
+            comboVoteDelegTarget: "",
             // Gov actions
             constURL: "",
             constHash: "",
@@ -540,6 +544,8 @@ class App extends React.Component {
             this.setState({dRepRegTarget: dRepIDBech32});
             // Default use the wallet's DRepID for Vote delegation target
             this.setState({voteDelegationTarget: dRepIDBech32});
+            // Default use the wallet's DRepID for combo Vote delegation target
+            this.setState({comboVoteDelegTarget: dRepIDBech32});
         } catch (err) {
             console.log(err)
         }
@@ -564,6 +570,8 @@ class App extends React.Component {
                 this.setState({voteDelegationStakeCred : stakeKeyHash});
                 // Set default stake key to unregister as the first registered key
                 this.setState({stakeKeyUnreg : stakeKeyHash});
+                // Set default stake key for combo certs as the first registered key
+                this.setState({comboStakeCred : stakeKeyHash});
             }
         } catch (err) {
             console.log(err)
@@ -745,9 +753,9 @@ class App extends React.Component {
         const certBuilder = CertificatesBuilder.new();
         const certBuilderWithStakeVoteDeleg = buildStakeVoteDelegCert(
             certBuilder, 
-            this.state.voteDelegationStakeCred,
-            '63b49197a85d0ed90c3173d6ffc27a5c5455eb3c800c2a710d2bbd9c',
-            this.state.voteDelegationTarget,
+            this.state.comboStakeCred,
+            this.state.comboPoolHash,
+            this.state.comboVoteDelegTarget,
         );
         if (certBuilderWithStakeVoteDeleg){
             this.setState({certBuilder : certBuilderWithStakeVoteDeleg});
@@ -757,9 +765,66 @@ class App extends React.Component {
         }
     }
 
-    // buildStakeRegDelegCert,
-    // buildStakeRegVoteDelegCert,
-    // buildStakeRegStakeVoteDelegCert,
+    addStakeRegDelegCert = async () => {
+        const certBuilder = CertificatesBuilder.new();
+        const certBuilderWithStakeRegDelegCert = buildStakeRegDelegCert(
+            certBuilder, 
+            this.state.comboStakeCred,
+            this.state.comboPoolHash,
+            this.state.comboStakeRegCoin,
+        );
+        // messy having this here
+        if (!this.state.comboStakeRegCoin){
+            this.protocolParams.keyDeposit = this.state.comboStakeRegCoin
+        }
+        if (certBuilderWithStakeRegDelegCert){
+            this.setState({certBuilder : certBuilderWithStakeRegDelegCert});
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    addStakeRegVoteDelegCert = async () => {
+        const certBuilder = CertificatesBuilder.new();
+        const certBuilderWithStakeRegVoteDelegCert = buildStakeRegVoteDelegCert(
+            certBuilder, 
+            this.state.comboStakeCred,
+            this.state.comboVoteDelegTarget,
+            this.state.comboStakeRegCoin,
+        );
+        // messy having this here
+        if (!this.state.comboStakeRegCoin){
+            this.protocolParams.keyDeposit = this.state.comboStakeRegCoin
+        }
+        if (certBuilderWithStakeRegVoteDelegCert){
+            this.setState({certBuilder : certBuilderWithStakeRegVoteDelegCert});
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    addStakeRegStakeVoteDelegCert = async () => {
+        const certBuilder = CertificatesBuilder.new();
+        const certBuilderWithStakeRegStakeVoteDelegCert = buildStakeRegStakeVoteDelegCert(
+            certBuilder, 
+            this.state.comboStakeCred,
+            this.state.comboPoolHash,
+            this.state.comboVoteDelegTarget,
+            this.state.comboStakeRegCoin,
+        );
+        // messy having this here
+        if (!this.state.comboStakeRegCoin){
+            this.protocolParams.keyDeposit = this.state.comboStakeRegCoin
+        }
+        if (certBuilderWithStakeRegStakeVoteDelegCert){
+            this.setState({certBuilder : certBuilderWithStakeRegStakeVoteDelegCert});
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     buildVoteDelegationCert = async () => {
         try {
@@ -1630,8 +1695,8 @@ class App extends React.Component {
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({stakeDelegationTarget: event.target.value})}
-                                    value={this.state.stakeDelegationTarget}
+                                    onChange={(event) => this.setState({comboPoolHash: event.target.value})}
+                                    value={this.state.comboPoolHash}
                                 />
                             </FormGroup>
                             <FormGroup
@@ -1641,8 +1706,36 @@ class App extends React.Component {
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({voteDelegationTarget: event.target.value})}
-                                    value={this.state.voteDelegationTarget}
+                                    onChange={(event) => this.setState({comboVoteDelegTarget: event.target.value})}
+                                    value={this.state.comboVoteDelegTarget}
+                                />
+                            </FormGroup>
+                            <FormGroup
+                                label="Stake Credential:"
+                                helperText="(Bech32 or Hex encoded)"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({comboStakeCred: event.target.value})}
+                                    value={this.state.comboStakeCred}
+                                />
+                            </FormGroup>
+
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.addStakeVoteDelegCert()) }>Build, .signTx() and .submitTx()</button>
+                        </div>
+                    } />
+                    <Tab id="2" title="Stake Registration and Stake Pool Delegation Certificate" panel={
+                        <div style={{marginLeft: "20px"}}>
+                            <FormGroup
+                                label="Target of Pool (keyhash):"
+                                helperText="(Bech32 or Hex encoded)"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({comboStakeCred: event.target.value})}
+                                    value={this.state.comboStakeCred}
                                 />
                             </FormGroup>
                             <FormGroup
@@ -1657,13 +1750,115 @@ class App extends React.Component {
                                 />
                             </FormGroup>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.addStakeVoteDelegCert()) }>Build, .signTx() and .submitTx()</button>
+                            <FormGroup
+                                helperText="This should align with current protocol parameters (in lovelace)"
+                                label="Stake Key Deposit Amount"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({comboStakeRegCoin : event.target.value})}
+                                    value={this.state.comboStakeRegCoin}
+                                />
+                            </FormGroup>
+                            
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.addStakeRegDelegCert()) }>Build, .signTx() and .submitTx()</button>
+                        </div>
+                    } />
+                    <Tab id="3" title="Stake Registration and Vote Delegation Certificate" panel={
+                        <div style={{marginLeft: "20px"}}>
+                            <FormGroup
+                                label="Target of Vote Delegation:"
+                                helperText="DRep ID | abstain | no confidence"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({comboVoteDelegTarget: event.target.value})}
+                                    value={this.state.comboVoteDelegTarget}
+                                />
+                            </FormGroup>
+                            <FormGroup
+                                label="Stake Credential:"
+                                helperText="(Bech32 or Hex encoded)"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({voteDelegationStakeCred: event.target.value})}
+                                    value={this.state.voteDelegationStakeCred}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
+                                helperText="This should align with current protocol parameters (in lovelace)"
+                                label="Stake Key Deposit Amount"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({comboStakeRegCoin : event.target.value})}
+                                    value={this.state.comboStakeRegCoin}
+                                />
+                            </FormGroup>
+                            
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.addStakeRegVoteDelegCert()) }>Build, .signTx() and .submitTx()</button>
+                        </div>
+                    } />
+                    <Tab id="4" title="Stake Registration,  Vote Delegation Certificate" panel={
+                        <div style={{marginLeft: "20px"}}>
+                            <FormGroup
+                                label="Target of Pool (keyhash):"
+                                helperText="(Bech32 or Hex encoded)"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({comboStakeCred: event.target.value})}
+                                    value={this.state.comboStakeCred}
+                                />
+                            </FormGroup>
+                            <FormGroup
+                                label="Target of Vote Delegation:"
+                                helperText="DRep ID | abstain | no confidence"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({comboVoteDelegTarget: event.target.value})}
+                                    value={this.state.comboVoteDelegTarget}
+                                />
+                            </FormGroup>
+                            <FormGroup
+                                label="Stake Credential:"
+                                helperText="(Bech32 or Hex encoded)"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({voteDelegationStakeCred: event.target.value})}
+                                    value={this.state.voteDelegationStakeCred}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
+                                helperText="This should align with current protocol parameters (in lovelace)"
+                                label="Stake Key Deposit Amount"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({comboStakeRegCoin : event.target.value})}
+                                    value={this.state.comboStakeRegCoin}
+                                />
+                            </FormGroup>
+                            
+                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.addStakeRegStakeVoteDelegCert()) }>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
 
                     <Tabs.Expander />
                 </Tabs>
-
 
                 <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
                 <p><span style={{fontWeight: "bold"}}>Use CIP-95 .signTx(): </span></p>
