@@ -1687,7 +1687,7 @@ class App extends React.Component {
 
                 <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
                 
-                <h5>✨Powered by CSL 12 alpha 11✨</h5>
+                <h5>✨Powered by CSL 12 alpha 12✨</h5>
             </div>
         )
     }
