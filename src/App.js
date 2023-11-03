@@ -115,6 +115,7 @@ class App extends React.Component {
             voteDelegationTarget: "",
             voteDelegationStakeCred: "",
             dRepRegTarget: "",
+            dRepDeposit: "2000000",
             voteGovActionTxHash: "",
             voteGovActionIndex: "",
             voteChoice: "",
@@ -134,6 +135,7 @@ class App extends React.Component {
             treasuryAmount: "",
             hardForkUpdateMajor: "",
             hardForkUpdateMinor: "",
+            govActDeposit: "1000000000",
         }
 
         /**
@@ -156,8 +158,6 @@ class App extends React.Component {
             priceMem: 0.0577,
             priceStep: 0.0000721,
             coinsPerUtxoWord: "34482",
-            // Conway Alpha
-            votingProposalDeposit: "0",
         }
         this.pollWallets = this.pollWallets.bind(this);
     }
@@ -419,6 +419,7 @@ class App extends React.Component {
             voteDelegationTarget: "",
             voteDelegationStakeCred: "",
             dRepRegTarget: "",
+            dRepDeposit: "2000000",
             voteGovActionTxHash: "",
             voteGovActionIndex: "",
             voteChoice: "",
@@ -438,6 +439,7 @@ class App extends React.Component {
             treasuryAmount: "",
             hardForkUpdateMajor: "",
             hardForkUpdateMinor: "",
+            govActDeposit: "1000000000",
         });
     }
 
@@ -884,13 +886,13 @@ class App extends React.Component {
                 // Create cert object
                 dRepRegCert = DrepRegistration.new_with_anchor(
                     dRepCred,
-                    BigNum.from_str("0"),
+                    BigNum.from_str(this.state.dRepDeposit),
                     anchor
                 );
             } else {
                 dRepRegCert = DrepRegistration.new(
                     dRepCred,
-                    BigNum.from_str("0"),
+                    BigNum.from_str(this.state.dRepDeposit),
                 );
             };
             // add cert to certbuilder
@@ -945,7 +947,7 @@ class App extends React.Component {
             const dRepCred = Credential.from_keyhash(dRepKeyHash);
             const dRepRetirementCert = DrepDeregistration.new(
                 dRepCred,
-                BigNum.from_str("0"),
+                BigNum.from_str(this.state.dRepDeposit),
             );
             // add cert to certbuilder
             certBuilder.add(Certificate.new_drep_deregistration(dRepRetirementCert));
@@ -1010,7 +1012,7 @@ class App extends React.Component {
             // Lets just use the connect wallet's reward address
             const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
             // Create voting proposal
-            const votingProposal = VotingProposal.new(constChangeGovAct, anchor, rewardAddr, BigNum.from_str("0"))
+            const votingProposal = VotingProposal.new(constChangeGovAct, anchor, rewardAddr, BigNum.from_str(this.state.govActDeposit))
             // Create gov action builder and set it in state
             const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
@@ -1034,7 +1036,7 @@ class App extends React.Component {
             // Lets just use the connect wallet's reward address
             const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
             // Create voting proposal
-            const votingProposal = VotingProposal.new(infoGovAct, anchor, rewardAddr, BigNum.from_str("0"))
+            const votingProposal = VotingProposal.new(infoGovAct, anchor, rewardAddr, BigNum.from_str(this.state.govActDeposit))
             // Create gov action builder and set it in state
             const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
@@ -1063,7 +1065,7 @@ class App extends React.Component {
             // Lets just use the connect wallet's reward address
             const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
             // Create voting proposal
-            const votingProposal = VotingProposal.new(treasuryGovAct, anchor, rewardAddr, BigNum.from_str("0"))
+            const votingProposal = VotingProposal.new(treasuryGovAct, anchor, rewardAddr, BigNum.from_str(this.state.govActDeposit))
             // Create gov action builder and set it in state
             const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
@@ -1094,7 +1096,7 @@ class App extends React.Component {
             // Lets just use the connect wallet's reward address
             const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
             // Create voting proposal
-            const votingProposal = VotingProposal.new(updateComGovAct, anchor, rewardAddr, BigNum.from_str("0"))
+            const votingProposal = VotingProposal.new(updateComGovAct, anchor, rewardAddr, BigNum.from_str(this.state.govActDeposit))
             // Create gov action builder and set it in state
             const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
@@ -1118,7 +1120,7 @@ class App extends React.Component {
             // Lets just use the connect wallet's reward address
             const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
             // Create voting proposal
-            const votingProposal = VotingProposal.new(noConfidenceGovAct, anchor, rewardAddr, BigNum.from_str("0"))
+            const votingProposal = VotingProposal.new(noConfidenceGovAct, anchor, rewardAddr, BigNum.from_str(this.state.govActDeposit))
             // Create gov action builder and set it in state
             const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
@@ -1145,7 +1147,7 @@ class App extends React.Component {
             // Lets just use the connect wallet's reward address
             const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
             // Create voting proposal
-            const votingProposal = VotingProposal.new(parameterChangeGovAct, anchor, rewardAddr, BigNum.from_str("0"))
+            const votingProposal = VotingProposal.new(parameterChangeGovAct, anchor, rewardAddr, BigNum.from_str(this.state.govActDeposit))
             // Create gov action builder and set it in state
             const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
@@ -1170,7 +1172,7 @@ class App extends React.Component {
             // Lets just use the connect wallet's reward address
             const rewardAddr = RewardAddress.from_address(Address.from_bech32(this.state.rewardAddress));
             // Create voting proposal
-            const votingProposal = VotingProposal.new(hardForkInitiationGovAct, anchor, rewardAddr, BigNum.from_str("0"))
+            const votingProposal = VotingProposal.new(hardForkInitiationGovAct, anchor, rewardAddr, BigNum.from_str(this.state.govActDeposit))
             // Create gov action builder and set it in state
             const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
@@ -1294,6 +1296,18 @@ class App extends React.Component {
                             </FormGroup>
 
                             <FormGroup
+                                helperText="This should align with current protocol parameters (in lovelace)"
+                                label="DRep Registration Deposit Amount"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({dRepDeposit : event.target.value})}
+                                    value={this.state.dRepDeposit}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
                                 helperText=""
                                 label="Optional: Metadata URL"
                             >
@@ -1348,6 +1362,18 @@ class App extends React.Component {
 
                     <Tab id="4" title="👴 DRep Retirement" panel={
                         <div style={{marginLeft: "20px"}}>
+                            <FormGroup
+                                helperText="This should align with how much was paid during registration (in lovelace)"
+                                label="DRep Registration Deposit Refund Amount"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({dRepDeposit : event.target.value})}
+                                    value={this.state.dRepDeposit}
+                                />
+                            </FormGroup>
+
                             <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildDRepRetirementCert())}>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
@@ -1417,6 +1443,18 @@ class App extends React.Component {
 
                 <p><span style={{fontWeight: "bold"}}>Use CIP-95 .signTx(): </span></p>
                 <p><span style={{fontWeight: "lighter"}}> Governance Actions</span></p>
+
+                <FormGroup
+                    helperText="This should align with current protocol parameters (in lovelace)"
+                    label="Governance Action Deposit Amount"
+                    >
+                    <InputGroup
+                        disabled={false}
+                        leftIcon="id-number"
+                        onChange={(event) => this.setState({govActDeposit : event.target.value})}
+                        value={this.state.govActDeposit}
+                    />
+                </FormGroup>
 
                 <Tabs id="cip95-actions" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95ActionsTabId}>
                     <Tab id="1" title="💡 Governance Action: Motion of no-confidence" panel={
