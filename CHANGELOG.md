@@ -1,5 +1,12 @@
 # Tags
 
+### 1.6.0
+- Add in combination certs
+- Unhardcoded DRep and Gov Act deposits
+- Refactor and split code
+
+![](./images/1.6.0.PNG)
+
 ### 1.5.8
 - Added new Conway Stake Reg and Unreg certs
 
