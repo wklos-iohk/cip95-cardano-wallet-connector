@@ -1772,8 +1772,8 @@ class App extends React.Component {
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({comboStakeCred: event.target.value})}
-                                    value={this.state.comboStakeCred}
+                                    onChange={(event) => this.setState({comboPoolHash: event.target.value})}
+                                    value={this.state.comboPoolHash}
                                 />
                             </FormGroup>
                             <FormGroup
@@ -1852,8 +1852,8 @@ class App extends React.Component {
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({comboStakeCred: event.target.value})}
-                                    value={this.state.comboStakeCred}
+                                    onChange={(event) => this.setState({comboPoolHash: event.target.value})}
+                                    value={this.state.comboPoolHash}
                                 />
                             </FormGroup>
                             <FormGroup
@@ -1874,8 +1874,8 @@ class App extends React.Component {
                                 <InputGroup
                                     disabled={false}
                                     leftIcon="id-number"
-                                    onChange={(event) => this.setState({voteDelegationStakeCred: event.target.value})}
-                                    value={this.state.voteDelegationStakeCred}
+                                    onChange={(event) => this.setState({comboVoteDelegTarget: event.target.value})}
+                                    value={this.state.comboVoteDelegTarget}
                                 />
                             </FormGroup>
 
