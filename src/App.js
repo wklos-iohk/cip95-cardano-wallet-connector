@@ -652,7 +652,7 @@ class App extends React.Component {
             txBuilder.add_output(
                 TransactionOutput.new(
                     shelleyOutputAddress,
-                    Value.new(BigNum.from_str("3000000"))
+                    Value.new(BigNum.from_str("13000000"))
                 ),
             );
             // Find the available UTxOs in the wallet and use them as Inputs for the transaction
@@ -2001,7 +2001,7 @@ class App extends React.Component {
 
                 <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
                 
-                <h5>✨Powered by CSL 12 alpha 12✨</h5>
+                <h5>✨Powered by CSL 12 alpha 13✨</h5>
             </div>
         )
     }
