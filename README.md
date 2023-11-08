@@ -19,14 +19,9 @@ See [CHANGELOG.md](./CHANGELOG.md) for feature details on older tags.
 - Improved handelling of refunds
 - CSL alpha 13
 
-### 1.6.0
-- Add in combination certs
-- Unhardcoded DRep and Gov Act deposits
-- Refactor and split code
-
-### 1.6.1 (In progress)
+### 1.6.2 (In progress)
 - signData
-- Less WIP GovActs
+- multiple certs in one transaction
 
 ## To Develop
 
