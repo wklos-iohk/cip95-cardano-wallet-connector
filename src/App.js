@@ -136,6 +136,10 @@ class App extends React.Component {
             treasuryAmount: "",
             hardForkUpdateMajor: "",
             hardForkUpdateMinor: "",
+            committeeAdd: undefined,
+            committeeExpiry: undefined,
+            committeeRemove: undefined,
+            committeeQuorum: undefined,
             govActDeposit: "1000000000",
         }
 
@@ -441,6 +445,10 @@ class App extends React.Component {
             treasuryAmount: "",
             hardForkUpdateMajor: "",
             hardForkUpdateMinor: "",
+            committeeAdd: undefined,
+            committeeExpiry: undefined,
+            committeeRemove: undefined,
+            committeeQuorum: undefined,
             govActDeposit: "1000000000",
         });
     }
@@ -1096,13 +1104,26 @@ class App extends React.Component {
     buildUpdateCommitteeGovAct = async () => {
         try {
             // Create new committee quorum threshold
-            const threshold = UnitInterval.new(BigNum.from_str("1"), BigNum.from_str("2"));
-            const newCommittee = Committee.new(threshold);
-            // temp: propose new committee which is the wallet's stake key, with expiry of 1000 epoch 
-            const stakeCred = Credential.from_keyhash(Ed25519KeyHash.from_hex(this.state.regStakeKeyHashHex))
-            newCommittee.add_member(stakeCred, 1000)
-            // Create new committee gov action
-            const updateComAction = UpdateCommitteeAction.new(newCommittee, Credentials.new());
+            let threshold = UnitInterval.new(BigNum.from_str("1"), BigNum.from_str("2"));
+            if(this.state.committeeQuorum){
+                threshold = UnitInterval.new(BigNum.from_str("1"), BigNum.from_str(this.state.committeeQuorum));
+            }
+    
+            // add new member if provided
+            let newCommittee = Committee.new(threshold);
+            if (this.state.committeeAdd && this.state.committeeExpiry){
+                const ccCredential = await this.handleInputToCredential((this.state.committeeAdd));
+                newCommittee.add_member(ccCredential, Number(this.state.committeeExpiry))
+            }
+            // remove member if provided
+            let removeCred;
+            if (this.state.committeeRemove){
+                removeCred = Credentials.new().add(await this.handleInputToCredential(this.state.committeeRemove))
+            } else {
+                removeCred = Credentials.new()
+            }
+
+            const updateComAction = UpdateCommitteeAction.new(newCommittee, removeCred);
             const updateComGovAct = GovernanceAction.new_new_committee_action(updateComAction);
 
             // Create anchor and then reset state
@@ -1501,8 +1522,51 @@ class App extends React.Component {
 
                         </div>
                     } />
-                    <Tab id="2" title="[WIP] 💡 Governance Action: Update Constitutional Committee" panel={
+                    <Tab id="2" title="💡 Governance Action: Update Constitutional Committee" panel={
                         <div style={{marginLeft: "20px"}}>
+
+                            <FormGroup
+                                helperText="(Bech32 or Hex encoded)"
+                                label="Optional: Committee Cold Credential to add"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({committeeAdd: event.target.value})}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
+                                label="Optional: Committee Cold Credential expiry epoch"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({committeeExpiry: event.target.value})}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
+                                helperText="(Bech32 or Hex encoded)"
+                                label="Optional: Committee Cold Credential to remove"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({committeeRemove: event.target.value})}
+                                />
+                            </FormGroup>
+
+                            <FormGroup
+                                helperText="1 / input"
+                                label="Optional: New Quorum Threshold"
+                            >
+                                <InputGroup
+                                    disabled={false}
+                                    leftIcon="id-number"
+                                    onChange={(event) => this.setState({committeeQuorum: event.target.value})}
+                                />
+                            </FormGroup>
 
                             <FormGroup
                                 label="Metadata URL"
@@ -1577,7 +1641,7 @@ class App extends React.Component {
 
                         </div>
                     } />
-                    <Tab id="4" title="[WIP] 💡 Governance Action: Hard-Fork Initation" panel={
+                    <Tab id="4" title="💡 Governance Action: Hard-Fork Initation" panel={
                         <div style={{marginLeft: "20px"}}>
 
                             <FormGroup
