@@ -120,9 +120,10 @@ class App extends React.Component {
             voteGovActionIndex: "",
             voteChoice: "",
             stakeKeyReg: "",
-            stakeKeyCoin: "",
+            stakeKeyCoin: "2000000",
             stakeKeyWithCoin: false,
             stakeKeyUnreg: "",
+            totalRefunds: undefined,
             // Combo certs
             comboPoolHash: "",
             comboStakeCred: "",
@@ -424,9 +425,10 @@ class App extends React.Component {
             voteGovActionIndex: "",
             voteChoice: "",
             stakeKeyReg: "",
-            stakeKeyCoin: "",
+            stakeKeyCoin: "2000000",
             stakeKeyWithCoin: false,
             stakeKeyUnreg: "",
+            totalRefunds: undefined,
             // Combo certs
             comboPoolHash: "",
             comboStakeCred: "",
@@ -630,15 +632,15 @@ class App extends React.Component {
             // Initialize builder with protocol parameters
             const txBuilder = await this.initTransactionBuilder();
             // Add certs, votes or gov actions to the transaction
-            if(this.state.certBuilder){
+            if (this.state.certBuilder){
                 txBuilder.set_certs_builder(this.state.certBuilder);
                 this.setState({certBuilder : undefined});
             }
-            if(this.state.votingBuilder){
+            if (this.state.votingBuilder){
                 txBuilder.set_voting_builder(this.state.votingBuilder);
                 this.setState({votingBuilder : undefined});
             }
-            if(this.state.govActionBuilder){
+            if (this.state.govActionBuilder){
                 txBuilder.set_voting_proposal_builder(this.state.govActionBuilder);
                 this.setState({govActionBuilder : undefined});
             }
@@ -647,12 +649,15 @@ class App extends React.Component {
             const shelleyOutputAddress = Address.from_bech32(this.state.usedAddress);
             const shelleyChangeAddress = Address.from_bech32(this.state.changeAddress);
             
-            // Add output of 3 ADA to the address of our wallet
-            // 3 is used incase of Stake key deposit refund
+            // Add output of 1 ADA plus total needed for refunds 
+            let outputValue = BigNum.from_str('1000000')
+            if (this.state.totalRefunds) {
+                outputValue = outputValue.checked_add(this.state.totalRefunds)
+            }
             txBuilder.add_output(
                 TransactionOutput.new(
                     shelleyOutputAddress,
-                    Value.new(BigNum.from_str("3000000"))
+                    Value.new(outputValue)
                 ),
             );
             // Find the available UTxOs in the wallet and use them as Inputs for the transaction
@@ -700,6 +705,7 @@ class App extends React.Component {
             // Reset anchor state
             this.setState({cip95MetadataURL : undefined});
             this.setState({cip95MetadataHash : undefined});
+            this.setState({totalRefunds : undefined});
 
         } catch (err) {
             console.log("Error during build, sign and submit transaction");
@@ -743,6 +749,16 @@ class App extends React.Component {
         if (!this.state.stakeKeyWithCoin){
             this.protocolParams.keyDeposit = this.state.stakeKeyCoin
         }
+
+        // messy having this here
+        let refund;
+        if (this.state.totalRefunds){
+            refund = (this.state.totalRefunds).checked_add(BigNum.from_str(this.state.stakeKeyWithCoin))
+        } else {
+            refund = BigNum.from_str(this.state.stakeKeyCoin)
+        }
+        this.setState({totalRefunds : refund})
+
         if (certBuilderWithStakeUnreg){
             this.setState({certBuilder : certBuilderWithStakeUnreg});
             return true;
