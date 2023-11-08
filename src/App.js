@@ -460,6 +460,7 @@ class App extends React.Component {
     refreshData = async () => {
         try {
             const walletFound = this.checkIfWalletFound();
+            this.resetSomeState();
             // If wallet found and CIP-95 selected perform CIP-30 initial API calls
             if (walletFound) {
                 await this.getAPIVersion();
@@ -567,7 +568,7 @@ class App extends React.Component {
         try {
             const raw = await this.API.cip95.getRegisteredPubStakeKeys();
             if (raw.length < 1){
-                console.log("No Registered Pub Stake Keys");
+                // console.log("No Registered Pub Stake Keys");
             } else {
                 // Set array
                 const regStakeKeys = raw;
@@ -699,30 +700,48 @@ class App extends React.Component {
             
             console.log("SignedTx: ", Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"))
             // console.log("Signed Tx: ", signedTx.to_json());
-            
-            // Submit built signed transaction to chain, via wallet's submit transaction endpoint
-            const result = await this.API.submitTx(Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"));
-            console.log("Built and submitted transaction: ", result)
-            // Set results so they can be rendered
-            const cip95ResultTx = Buffer.from(signedTx.to_bytes(), "utf8").toString("hex");
-            const cip95ResultHash = result;
-            const cip95ResultWitness = Buffer.from(txVkeyWitnesses.to_bytes(), "utf8").toString("hex");
-            this.setState({cip95ResultTx});
-            this.setState({cip95ResultHash});
-            this.setState({cip95ResultWitness});
-            // Reset anchor state
-            this.setState({cip95MetadataURL : undefined});
-            this.setState({cip95MetadataHash : undefined});
-            this.setState({totalRefunds : undefined});
 
+            const cip95ResultWitness = Buffer.from(txVkeyWitnesses.to_bytes(), "utf8").toString("hex");
+            this.setState({cip95ResultWitness});
+
+            if (await this.submitConwayTx(signedTx)){
+                 // Reset  state
+                this.setState({cip95MetadataURL : undefined});
+                this.setState({cip95MetadataHash : undefined});
+                this.setState({totalRefunds : undefined});
+            } else{
+                throw "Error during submission of transaction"
+            }
         } catch (err) {
             console.log("Error during build, sign and submit transaction");
-            console.log(err);
+            // console.log(err);
             await this.refreshData();
         }
     }
 
+    submitConwayTx = async (signedTx) => {
+        try {
+            const result = await this.API.submitTx(Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"));
+            console.log("Submitted transaction hash", result)
+            // Set results so they can be rendered
+            const cip95ResultTx = Buffer.from(signedTx.to_bytes(), "utf8").toString("hex");
+            this.setState({cip95ResultTx});
+            this.setState({cip95ResultHash : result});
+            return true;
+        } catch (err) {
+            console.log("Error during submission of transaction");
+            console.log(err);
+            return false;
+        }
+    }
+
+    resetSomeState = async () => { 
+        this.setState({cip95ResultTx : ""});
+        this.setState({cip95ResultHash : ""});
+    }
+
     addStakeKeyRegCert = async () => {
+        this.resetSomeState();
         const certBuilder = CertificatesBuilder.new();
 
         const certBuilderWithStakeReg = buildStakeKeyRegCert(
@@ -746,6 +765,7 @@ class App extends React.Component {
 
 
     addStakeKeyUnregCert = async () => {
+        this.resetSomeState();
         const certBuilder = CertificatesBuilder.new();
         const certBuilderWithStakeUnreg = buildStakeKeyUnregCert(
             certBuilder, 
@@ -776,6 +796,7 @@ class App extends React.Component {
     }
 
     addStakeVoteDelegCert = async () => {
+        this.resetSomeState();
         const certBuilder = CertificatesBuilder.new();
         const certBuilderWithStakeVoteDeleg = buildStakeVoteDelegCert(
             certBuilder, 
@@ -792,6 +813,7 @@ class App extends React.Component {
     }
 
     addStakeRegDelegCert = async () => {
+        this.resetSomeState();
         const certBuilder = CertificatesBuilder.new();
         const certBuilderWithStakeRegDelegCert = buildStakeRegDelegCert(
             certBuilder, 
@@ -812,6 +834,7 @@ class App extends React.Component {
     }
 
     addStakeRegVoteDelegCert = async () => {
+        this.resetSomeState();
         const certBuilder = CertificatesBuilder.new();
         const certBuilderWithStakeRegVoteDelegCert = buildStakeRegVoteDelegCert(
             certBuilder, 
@@ -832,6 +855,7 @@ class App extends React.Component {
     }
 
     addStakeRegStakeVoteDelegCert = async () => {
+        this.resetSomeState();
         const certBuilder = CertificatesBuilder.new();
         const certBuilderWithStakeRegStakeVoteDelegCert = buildStakeRegStakeVoteDelegCert(
             certBuilder, 
@@ -853,6 +877,7 @@ class App extends React.Component {
     }
 
     buildVoteDelegationCert = async () => {
+        this.resetSomeState();
         try {
             // Build Vote Delegation Certificate using wallets stake credential
             const certBuilder = CertificatesBuilder.new();
@@ -897,6 +922,7 @@ class App extends React.Component {
     }
 
     buildDRepRegCert = async () => {
+        this.resetSomeState();
         try {
             // Build DRep Registration Certificate
             const certBuilder = CertificatesBuilder.new();
@@ -930,6 +956,7 @@ class App extends React.Component {
     }
 
     buildDRepUpdateCert = async () => {
+        this.resetSomeState();
         try {
             // Build DRep Registration Certificate
             const certBuilder = CertificatesBuilder.new();
@@ -963,6 +990,7 @@ class App extends React.Component {
     }
 
     buildDRepRetirementCert = async () => {
+        this.resetSomeState();
         try {
             // Build DRep Registration Certificate
             const certBuilder = CertificatesBuilder.new();
@@ -984,6 +1012,7 @@ class App extends React.Component {
     }
 
     buildVote = async () => {
+        this.resetSomeState();
         try {
             // Use wallet's DRep key
             const dRepKeyHash = Ed25519KeyHash.from_hex(this.state.dRepID);
@@ -1021,6 +1050,7 @@ class App extends React.Component {
     }
 
     buildNewConstGovAct = async () => {
+        this.resetSomeState();
         try {
             // Create new constitution gov action
             const constURL = URL.new(this.state.constURL);
@@ -1049,6 +1079,7 @@ class App extends React.Component {
     }
 
     buildNewInfoGovAct = async () => {
+        this.resetSomeState();
         try {
             // Create new info action
             const infoAction = InfoAction.new();
@@ -1073,6 +1104,7 @@ class App extends React.Component {
     }
 
     buildTreasuryGovAct = async () => {
+        this.resetSomeState();
         try {
             // take inputs
             const treasuryTarget = RewardAddress.from_address(Address.from_bech32(this.state.treasuryTarget));
@@ -1102,6 +1134,7 @@ class App extends React.Component {
     }
 
     buildUpdateCommitteeGovAct = async () => {
+        this.resetSomeState();
         try {
             // Create new committee quorum threshold
             let threshold = UnitInterval.new(BigNum.from_str("1"), BigNum.from_str("2"));
@@ -1146,6 +1179,7 @@ class App extends React.Component {
     }
 
     buildMotionOfNoConfidenceAction = async () => {
+        this.resetSomeState();
         try {
             // Create motion of no confidence gov action
             const noConfidenceAction = NoConfidenceAction.new();
@@ -1170,6 +1204,7 @@ class App extends React.Component {
     }
 
     buildProtocolParamAction = async () => {
+        this.resetSomeState();
         try {
             // Placeholder just do key deposit for now
             const protocolParmUpdate = ProtocolParamUpdate.new();
@@ -1197,6 +1232,7 @@ class App extends React.Component {
     }
 
     buildHardForkAction = async () => {
+        this.resetSomeState();
         try {
             const nextProtocolVerion = ProtocolVersion.new(this.state.hardForkUpdateMajor, this.state.hardForkUpdateMinor);
             // Create HF Initiation Action
@@ -1259,9 +1295,7 @@ class App extends React.Component {
                 <h3>CIP-30 Initial API</h3>
                 <p><span style={{fontWeight: "bold"}}>Wallet Found: </span>{`${this.state.walletFound}`}</p>
                 <p><span style={{fontWeight: "bold"}}>Wallet Connected: </span>{`${this.state.walletIsEnabled}`}</p>
-                <p><span style={{fontWeight: "bold"}}>Wallet API version: </span>{this.state.walletAPIVersion}</p>
-                <p><span style={{fontWeight: "bold"}}>Wallet name: </span>{this.state.walletName}</p>
-                <p><span style={{ fontWeight: "bold" }}>.getSupportedExtensions():</span></p>
+                <p><span style={{ fontWeight: "bold" }}>.supportedExtensions:</span></p>
                 <ul>{this.state.supportedExtensions && this.state.supportedExtensions.length > 0 ? this.state.supportedExtensions.map((item, index) => ( <li style={{ fontSize: "12px" }} key={index}>{item.cip}</li>)) : <li>No supported extensions found.</li>}</ul>
                 <h3>CIP-30 Full API</h3>
                 <p><span style={{fontWeight: "bold"}}>Network Id (0 = testnet; 1 = mainnet): </span>{this.state.networkId}</p>
@@ -1269,11 +1303,11 @@ class App extends React.Component {
                 <p style={{paddingTop: "10px"}}><span style={{fontWeight: "bold"}}>Balance: </span>{this.state.balance}</p>
                 <p><span style={{fontWeight: "bold"}}>.getChangeAddress(): </span>{this.state.changeAddress}</p>
                 <p><span style={{fontWeight: "bold"}}>.getRewardsAddress(): </span>{this.state.rewardAddress}</p>
-                <p><span style={{fontWeight: "bold"}}>.getUsedAddresses(): </span>{this.state.usedAddress}</p>
                 <p><span style={{ fontWeight: "bold" }}>.getExtensions():</span></p>
                 <ul>{this.state.enabledExtensions && this.state.enabledExtensions.length > 0 ? this.state.enabledExtensions.map((item, index) => ( <li style={{ fontSize: "12px" }} key={index}>{item.cip}</li>)) : <li>No extensions enabled.</li>}</ul>
                 <hr style={{marginTop: "40px", marginBottom: "10px"}}/>
                 <h1>CIP-95 🤠</h1>
+                <button style={{padding: "20px"}} onClick={this.refreshData}>Refresh</button> 
                 <p><span style={{fontWeight: "bold"}}>.cip95.getPubDRepKey(): </span>{this.state.dRepKey}</p>
                 <p><span style={{fontWeight: "lighter"}}>Hex DRep ID (Pub DRep Key hash): </span>{this.state.dRepID}</p>
                 <p><span style={{fontWeight: "lighter"}}>Bech32 DRep ID (Pub DRep Key hash): </span>{this.state.dRepIDBech32}</p>
@@ -1476,6 +1510,16 @@ class App extends React.Component {
                     } />
                     <Tabs.Expander />
                 </Tabs>
+
+                {this.state.cip95ResultTx !== '' && this.state.cip95ResultHash !== '' && (
+                <>
+                    <hr style={{marginTop: "2px", marginBottom: "10px"}}/>
+                    <h5>🚀 Transaction built, sign and submitted successfully 🚀</h5>
+                    <p><span style={{fontWeight: "bold"}}>Tx Hash: </span>{this.state.cip95ResultHash}</p>
+                    <p><span style={{fontWeight: "bold"}}>CborHex Tx: </span>{this.state.cip95ResultTx}</p>
+                </>
+                )}
+
                 <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
 
                 <p><span style={{fontWeight: "bold"}}>Use CIP-95 .signTx(): </span></p>
@@ -2072,14 +2116,15 @@ class App extends React.Component {
                     } />
                     <Tabs.Expander />
                 </Tabs>
-                
-                <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
-
-                <p><span style={{fontWeight: "bold"}}>CborHex Tx: </span>{this.state.cip95ResultTx}</p>
+                <hr style={{marginTop: "2px", marginBottom: "10px"}}/>
+                {this.state.cip95ResultTx !== '' && this.state.cip95ResultHash !== '' && (
+                <>
+                    <h5>🚀 Transaction built, sign and submitted successfully 🚀</h5>
+                </>
+                )}
                 <p><span style={{fontWeight: "bold"}}>Tx Hash: </span>{this.state.cip95ResultHash}</p>
-                <p><span style={{fontWeight: "bold"}}>Witnesses: </span>{this.state.cip95ResultWitness}</p>
-
-                <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
+                <p><span style={{fontWeight: "bold"}}>CborHex Tx: </span>{this.state.cip95ResultTx}</p>
+                <hr style={{marginTop: "2px", marginBottom: "10px"}}/>
                 
                 <h5>✨Powered by CSL 12 alpha 13✨</h5>
             </div>
