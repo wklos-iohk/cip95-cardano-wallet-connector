@@ -1,5 +1,13 @@
 # Tags
 
+### 1.6.1
+- General UI improvements
+- Improved update committee
+- Improved handelling of refunds
+- CSL alpha 13
+
+![](./images/1.6.1.PNG)
+
 ### 1.6.0
 - Add in combination certs
 - Unhardcoded DRep and Gov Act deposits
