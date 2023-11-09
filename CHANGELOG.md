@@ -1,5 +1,13 @@
 # Tags
 
+### 1.6.2
+- multiple certs in one transaction
+- multiple votes in one transaction
+- multiple goActs in one transaction
+- make UI modular with tickboxes
+
+![](./images/1.6.2.PNG)
+
 ### 1.6.1
 - General UI improvements
 - Improved update committee
