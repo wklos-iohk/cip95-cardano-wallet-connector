@@ -103,6 +103,12 @@ class App extends React.Component {
             regStakeKeyHashHex: undefined,
             unregStakeKeyHashHex: undefined,
             // Txs
+            seeCombos: false,
+            seeGovActs: false,
+            seeMisc: false,
+            certsInTx: [],
+            votesInTx: [],
+            govActsInTx: [],
             cip95ResultTx: "",
             cip95ResultHash: "",
             cip95ResultWitness: "",
@@ -127,7 +133,7 @@ class App extends React.Component {
             // Combo certs
             comboPoolHash: "",
             comboStakeCred: "",
-            comboStakeRegCoin: "",
+            comboStakeRegCoin: "2000000",
             comboVoteDelegTarget: "",
             // Gov actions
             constURL: "",
@@ -412,6 +418,12 @@ class App extends React.Component {
             regStakeKeyHashHex: undefined,
             unregStakeKeyHashHex: undefined,
             // Txs
+            seeCombos: false,
+            seeGovActs: false,
+            seeMisc: false,
+            certsInTx: [],
+            votesInTx: [],
+            govActsInTx: [],
             cip95ResultTx: "",
             cip95ResultHash: "",
             cip95ResultWitness: "",
@@ -436,7 +448,7 @@ class App extends React.Component {
             // Combo certs
             comboPoolHash: "",
             comboStakeCred: "",
-            comboStakeRegCoin: "",
+            comboStakeRegCoin: "2000000",
             comboVoteDelegTarget: "",
             // Gov actions
             constURL: "",
@@ -632,6 +644,95 @@ class App extends React.Component {
         this.setState({selectedCIP95});
     }
 
+    handleInputToCredential = async (input) => {
+        try {
+          const keyHash = Ed25519KeyHash.from_hex(input);
+          const cred = Credential.from_keyhash(keyHash);
+          return cred;
+        } catch (err1) {
+          try {
+            const keyHash = Ed25519KeyHash.from_bech32(input);
+            const cred = Credential.from_keyhash(keyHash);
+            return cred;
+          } catch (err2) {
+            console.error('Error in parsing credential, not Hex or Bech32:', err1, err2);
+            return null;
+          }
+        }
+    }
+
+    resetSomeState = async () => { 
+        this.setState({cip95ResultTx : ""});
+        this.setState({cip95ResultHash : ""});
+        this.setState({certsInTx : []});
+        this.setState({votesInTx : []});
+        this.setState({govActsInTx : []});
+        this.setState({certBuilder : undefined});
+        this.setState({votingBuilder : undefined});
+        this.setState({govActionBuilder : undefined});
+    }
+
+    getCertBuilder = async () => {
+        if (this.state.certBuilder){
+            return this.state.certBuilder;
+        } else {
+            return CertificatesBuilder.new();
+        }
+    }
+
+    setCertBuilder = async (certBuilderWithCert) => {
+        this.setState({certBuilder : certBuilderWithCert});
+
+        let certs = certBuilderWithCert.build();
+        let certsInJson = [];
+        for (let i = 0; i < certs.len(); i++) {
+            certsInJson.push(certs.get(i).to_json());
+        }
+        this.setState({certsInTx : certsInJson});
+    }
+
+    getVotingBuilder = async () => {
+        let votingBuilder;
+        if (this.state.votingBuilder){
+            votingBuilder = this.state.votingBuilder;
+        } else {
+            votingBuilder = VotingBuilder.new();
+        }
+        return votingBuilder;
+    }
+
+    setVotingBuilder = async (votingBuilderWithVote) => {
+        this.setState({votingBuilder : votingBuilderWithVote});
+
+        // let votes = votingBuilderWithVote.build();
+        // let votesInJson = [];
+        // for (let i = 0; i < votes.get_voters().len(); i++) {
+        //     votesInJson.push(votes.get(i).to_json());
+        // }
+        this.setState({votesInTx : votingBuilderWithVote.build().to_json()});
+    }
+
+    getGovActionBuilder = async () => {
+        let govActionBuilder;
+        if (this.state.govActionBuilder){
+            govActionBuilder = this.state.govActionBuilder;
+        } else {
+            govActionBuilder = VotingProposalBuilder.new();
+        }
+        return govActionBuilder;
+    }
+
+    setGovActionBuilder = async (govActionBuilderWithAction) => {
+        this.setState({govActionBuilder : govActionBuilderWithAction});
+
+        let actions = govActionBuilderWithAction.build();
+        let actionsInJson = [];
+        for (let i = 0; i < actions.len(); i++) {
+            actionsInJson.push(actions.get(i).to_json());
+        }
+        this.setState({govActsInTx : actionsInJson});
+    }
+
     buildSubmitConwayTx = async (builderSuccess) => {
         try {
             // Abort if error before building Tx
@@ -703,6 +804,8 @@ class App extends React.Component {
 
             const cip95ResultWitness = Buffer.from(txVkeyWitnesses.to_bytes(), "utf8").toString("hex");
             this.setState({cip95ResultWitness});
+            
+            this.resetSomeState();
 
             if (await this.submitConwayTx(signedTx)){
                  // Reset  state
@@ -735,38 +838,31 @@ class App extends React.Component {
         }
     }
 
-    resetSomeState = async () => { 
-        this.setState({cip95ResultTx : ""});
-        this.setState({cip95ResultHash : ""});
-    }
-
     addStakeKeyRegCert = async () => {
-        this.resetSomeState();
-        const certBuilder = CertificatesBuilder.new();
-
+        let certBuilder = await this.getCertBuilder();
+        console.log("Adding stake registration cert to transaction")
         const certBuilderWithStakeReg = buildStakeKeyRegCert(
             certBuilder, 
             this.state.stakeKeyReg,
             this.state.stakeKeyWithCoin,
             this.state.stakeKeyCoin,
         );
-            
+    
         // messy having this here
         if (!this.state.stakeKeyWithCoin){
             this.protocolParams.keyDeposit = this.state.stakeKeyCoin
         }
         if (certBuilderWithStakeReg){
-            this.setState({certBuilder : certBuilderWithStakeReg});
+            await this.setCertBuilder(certBuilderWithStakeReg)
             return true;
         } else {
             return false;
         }
     }
 
-
     addStakeKeyUnregCert = async () => {
-        this.resetSomeState();
-        const certBuilder = CertificatesBuilder.new();
+        let certBuilder = await this.getCertBuilder();
+        console.log("Adding stake deregistraiton cert to transaction")
         const certBuilderWithStakeUnreg = buildStakeKeyUnregCert(
             certBuilder, 
             this.state.stakeKeyUnreg,
@@ -788,7 +884,7 @@ class App extends React.Component {
         this.setState({totalRefunds : refund})
 
         if (certBuilderWithStakeUnreg){
-            this.setState({certBuilder : certBuilderWithStakeUnreg});
+            await this.setCertBuilder(certBuilderWithStakeUnreg)
             return true;
         } else {
             return false;
@@ -796,8 +892,8 @@ class App extends React.Component {
     }
 
     addStakeVoteDelegCert = async () => {
-        this.resetSomeState();
-        const certBuilder = CertificatesBuilder.new();
+        let certBuilder = await this.getCertBuilder();
+        console.log("Adding vote delegation cert to transaction")
         const certBuilderWithStakeVoteDeleg = buildStakeVoteDelegCert(
             certBuilder, 
             this.state.comboStakeCred,
@@ -805,7 +901,7 @@ class App extends React.Component {
             this.state.comboVoteDelegTarget,
         );
         if (certBuilderWithStakeVoteDeleg){
-            this.setState({certBuilder : certBuilderWithStakeVoteDeleg});
+            await this.setCertBuilder(certBuilderWithStakeVoteDeleg)
             return true;
         } else {
             return false;
@@ -813,8 +909,8 @@ class App extends React.Component {
     }
 
     addStakeRegDelegCert = async () => {
-        this.resetSomeState();
-        const certBuilder = CertificatesBuilder.new();
+        let certBuilder = await this.getCertBuilder();
+        console.log("Adding (stake key reg and stake pool delegation) cert to transaction")
         const certBuilderWithStakeRegDelegCert = buildStakeRegDelegCert(
             certBuilder, 
             this.state.comboStakeCred,
@@ -826,7 +922,7 @@ class App extends React.Component {
             this.protocolParams.keyDeposit = this.state.comboStakeRegCoin
         }
         if (certBuilderWithStakeRegDelegCert){
-            this.setState({certBuilder : certBuilderWithStakeRegDelegCert});
+            await this.setCertBuilder(certBuilderWithStakeRegDelegCert)
             return true;
         } else {
             return false;
@@ -834,8 +930,8 @@ class App extends React.Component {
     }
 
     addStakeRegVoteDelegCert = async () => {
-        this.resetSomeState();
-        const certBuilder = CertificatesBuilder.new();
+        let certBuilder = await this.getCertBuilder();
+        console.log("Adding (stake key reg and vote delegation) cert to transaction")
         const certBuilderWithStakeRegVoteDelegCert = buildStakeRegVoteDelegCert(
             certBuilder, 
             this.state.comboStakeCred,
@@ -847,7 +943,7 @@ class App extends React.Component {
             this.protocolParams.keyDeposit = this.state.comboStakeRegCoin
         }
         if (certBuilderWithStakeRegVoteDelegCert){
-            this.setState({certBuilder : certBuilderWithStakeRegVoteDelegCert});
+            await this.setCertBuilder(certBuilderWithStakeRegVoteDelegCert)
             return true;
         } else {
             return false;
@@ -855,8 +951,8 @@ class App extends React.Component {
     }
 
     addStakeRegStakeVoteDelegCert = async () => {
-        this.resetSomeState();
-        const certBuilder = CertificatesBuilder.new();
+        let certBuilder = await this.getCertBuilder();
+        console.log("Adding (stake key reg, stake pool delegation and vote delegation) cert to transaction")
         const certBuilderWithStakeRegStakeVoteDelegCert = buildStakeRegStakeVoteDelegCert(
             certBuilder, 
             this.state.comboStakeCred,
@@ -869,7 +965,7 @@ class App extends React.Component {
             this.protocolParams.keyDeposit = this.state.comboStakeRegCoin
         }
         if (certBuilderWithStakeRegStakeVoteDelegCert){
-            this.setState({certBuilder : certBuilderWithStakeRegStakeVoteDelegCert});
+            await this.setCertBuilder(certBuilderWithStakeRegStakeVoteDelegCert)
             return true;
         } else {
             return false;
@@ -877,10 +973,9 @@ class App extends React.Component {
     }
 
     buildVoteDelegationCert = async () => {
-        this.resetSomeState();
+        let certBuilder = await this.getCertBuilder();
+        console.log("Adding vote delegation cert to transaction")
         try {
-            // Build Vote Delegation Certificate using wallets stake credential
-            const certBuilder = CertificatesBuilder.new();
             const stakeCred = await this.handleInputToCredential(this.state.voteDelegationStakeCred);
             // Create correct DRep
             let targetDRep
@@ -894,9 +989,9 @@ class App extends React.Component {
             };
             // Create cert object
             const voteDelegationCert = VoteDelegation.new(stakeCred, targetDRep);
-            // add cert to txbuilder
+            // add cert to certBuilder
             certBuilder.add(Certificate.new_vote_delegation(voteDelegationCert));
-            this.setState({certBuilder : certBuilder});
+            await this.setCertBuilder(certBuilder)
             return true;
         } catch (err) {
             console.log(err);
@@ -904,28 +999,10 @@ class App extends React.Component {
         }
     }
 
-    handleInputToCredential = async (input) => {
-        try {
-          const keyHash = Ed25519KeyHash.from_hex(input);
-          const cred = Credential.from_keyhash(keyHash);
-          return cred;
-        } catch (err1) {
-          try {
-            const keyHash = Ed25519KeyHash.from_bech32(input);
-            const cred = Credential.from_keyhash(keyHash);
-            return cred;
-          } catch (err2) {
-            console.error('Error in parsing credential, not Hex or Bech32:', err1, err2);
-            return null;
-          }
-        }
-    }
-
     buildDRepRegCert = async () => {
-        this.resetSomeState();
+        let certBuilder = await this.getCertBuilder();
+        console.log("Adding DRep Registration cert to transaction")
         try {
-            // Build DRep Registration Certificate
-            const certBuilder = CertificatesBuilder.new();
             const dRepCred = await this.handleInputToCredential(this.state.dRepRegTarget);
             let dRepRegCert;
             // If there is an anchor
@@ -947,7 +1024,7 @@ class App extends React.Component {
             };
             // add cert to certbuilder
             certBuilder.add(Certificate.new_drep_registration(dRepRegCert));
-            this.setState({certBuilder : certBuilder});
+            await this.setCertBuilder(certBuilder)
             return true;
         } catch (err) {
             console.log(err);
@@ -956,10 +1033,9 @@ class App extends React.Component {
     }
 
     buildDRepUpdateCert = async () => {
-        this.resetSomeState();
+        let certBuilder = await this.getCertBuilder();
+        console.log("Adding DRep Update cert to transaction")
         try {
-            // Build DRep Registration Certificate
-            const certBuilder = CertificatesBuilder.new();
             // Use the wallet's DRep ID
             const dRepKeyHash = Ed25519KeyHash.from_hex(this.state.dRepID);
             const dRepCred = Credential.from_keyhash(dRepKeyHash);
@@ -981,7 +1057,7 @@ class App extends React.Component {
             };
             // add cert to certbuilder
             certBuilder.add(Certificate.new_drep_update(dRepUpdateCert));
-            this.setState({certBuilder : certBuilder});
+            await this.setCertBuilder(certBuilder)
             return true;
         } catch (err) {
             console.log(err);
@@ -990,10 +1066,9 @@ class App extends React.Component {
     }
 
     buildDRepRetirementCert = async () => {
-        this.resetSomeState();
+        let certBuilder = await this.getCertBuilder();
+        console.log("Adding DRep Retirement cert to transaction")
         try {
-            // Build DRep Registration Certificate
-            const certBuilder = CertificatesBuilder.new();
             // Use the wallet's DRep ID
             const dRepKeyHash = Ed25519KeyHash.from_hex(this.state.dRepID);
             const dRepCred = Credential.from_keyhash(dRepKeyHash);
@@ -1003,7 +1078,7 @@ class App extends React.Component {
             );
             // add cert to certbuilder
             certBuilder.add(Certificate.new_drep_deregistration(dRepRetirementCert));
-            this.setState({certBuilder : certBuilder});
+            await this.setCertBuilder(certBuilder)
             return true;
         } catch (err) {
             console.log(err);
@@ -1012,7 +1087,8 @@ class App extends React.Component {
     }
 
     buildVote = async () => {
-        this.resetSomeState();
+        let votingBuilder = await this.getVotingBuilder();
+        console.log("Adding DRep vote to transaction")
         try {
             // Use wallet's DRep key
             const dRepKeyHash = Ed25519KeyHash.from_hex(this.state.dRepID);
@@ -1039,9 +1115,8 @@ class App extends React.Component {
                 votingProcedure = VotingProcedure.new(votingChoice);
             };
             // Add vote to vote builder
-            const votingBuilder = VotingBuilder.new();
             votingBuilder.add(voter, govActionId, votingProcedure);
-            this.setState({votingBuilder});
+            await this.setVotingBuilder(votingBuilder)
             return true;
         } catch (err) {
             console.log(err);
@@ -1050,7 +1125,8 @@ class App extends React.Component {
     }
 
     buildNewConstGovAct = async () => {
-        this.resetSomeState();
+        let govActionBuilder = await this.getGovActionBuilder();
+        console.log("Adding New Constitution Gov Act to transaction")
         try {
             // Create new constitution gov action
             const constURL = URL.new(this.state.constURL);
@@ -1068,9 +1144,8 @@ class App extends React.Component {
             // Create voting proposal
             const votingProposal = VotingProposal.new(constChangeGovAct, anchor, rewardAddr, BigNum.from_str(this.state.govActDeposit))
             // Create gov action builder and set it in state
-            const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
-            this.setState({govActionBuilder});
+            await this.setGovActionBuilder(govActionBuilder)
             return true;
         } catch (err) {
             console.log(err);
@@ -1079,7 +1154,8 @@ class App extends React.Component {
     }
 
     buildNewInfoGovAct = async () => {
-        this.resetSomeState();
+        let govActionBuilder = await this.getGovActionBuilder();
+        console.log("Adding New Constitution Gov Act to transaction")
         try {
             // Create new info action
             const infoAction = InfoAction.new();
@@ -1093,9 +1169,8 @@ class App extends React.Component {
             // Create voting proposal
             const votingProposal = VotingProposal.new(infoGovAct, anchor, rewardAddr, BigNum.from_str(this.state.govActDeposit))
             // Create gov action builder and set it in state
-            const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
-            this.setState({govActionBuilder});
+            await this.setGovActionBuilder(govActionBuilder)
             return true;
         } catch (err) {
             console.log(err);
@@ -1104,7 +1179,8 @@ class App extends React.Component {
     }
 
     buildTreasuryGovAct = async () => {
-        this.resetSomeState();
+        let govActionBuilder = await this.getGovActionBuilder();
+        console.log("Adding Treasury Withdrawal Gov Act to transaction")
         try {
             // take inputs
             const treasuryTarget = RewardAddress.from_address(Address.from_bech32(this.state.treasuryTarget));
@@ -1123,9 +1199,8 @@ class App extends React.Component {
             // Create voting proposal
             const votingProposal = VotingProposal.new(treasuryGovAct, anchor, rewardAddr, BigNum.from_str(this.state.govActDeposit))
             // Create gov action builder and set it in state
-            const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
-            this.setState({govActionBuilder});
+            await this.setGovActionBuilder(govActionBuilder)
             return true;
         } catch (err) {
             console.log(err);
@@ -1134,7 +1209,8 @@ class App extends React.Component {
     }
 
     buildUpdateCommitteeGovAct = async () => {
-        this.resetSomeState();
+        let govActionBuilder = await this.getGovActionBuilder();
+        console.log("Adding Update Committee Gov Act to transaction")
         try {
             // Create new committee quorum threshold
             let threshold = UnitInterval.new(BigNum.from_str("1"), BigNum.from_str("2"));
@@ -1168,9 +1244,8 @@ class App extends React.Component {
             // Create voting proposal
             const votingProposal = VotingProposal.new(updateComGovAct, anchor, rewardAddr, BigNum.from_str(this.state.govActDeposit))
             // Create gov action builder and set it in state
-            const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
-            this.setState({govActionBuilder});
+            await this.setGovActionBuilder(govActionBuilder)
             return true;
         } catch (err) {
             console.log(err);
@@ -1179,7 +1254,8 @@ class App extends React.Component {
     }
 
     buildMotionOfNoConfidenceAction = async () => {
-        this.resetSomeState();
+        let govActionBuilder = await this.getGovActionBuilder();
+        console.log("Adding Motion of No Confidence Gov Act to transaction")
         try {
             // Create motion of no confidence gov action
             const noConfidenceAction = NoConfidenceAction.new();
@@ -1193,9 +1269,8 @@ class App extends React.Component {
             // Create voting proposal
             const votingProposal = VotingProposal.new(noConfidenceGovAct, anchor, rewardAddr, BigNum.from_str(this.state.govActDeposit))
             // Create gov action builder and set it in state
-            const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
-            this.setState({govActionBuilder});
+            await this.setGovActionBuilder(govActionBuilder)
             return true;
         } catch (err) {
             console.log(err);
@@ -1204,7 +1279,8 @@ class App extends React.Component {
     }
 
     buildProtocolParamAction = async () => {
-        this.resetSomeState();
+        let govActionBuilder = await this.getGovActionBuilder();
+        console.log("Adding Protocol Param Change Gov Act to transaction")
         try {
             // Placeholder just do key deposit for now
             const protocolParmUpdate = ProtocolParamUpdate.new();
@@ -1221,9 +1297,8 @@ class App extends React.Component {
             // Create voting proposal
             const votingProposal = VotingProposal.new(parameterChangeGovAct, anchor, rewardAddr, BigNum.from_str(this.state.govActDeposit))
             // Create gov action builder and set it in state
-            const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
-            this.setState({govActionBuilder});
+            await this.setGovActionBuilder(govActionBuilder)
             return true;
         } catch (err) {
             console.log(err);
@@ -1232,7 +1307,8 @@ class App extends React.Component {
     }
 
     buildHardForkAction = async () => {
-        this.resetSomeState();
+        let govActionBuilder = await this.getGovActionBuilder();
+        console.log("Adding Protocol Param Change Gov Act to transaction")
         try {
             const nextProtocolVerion = ProtocolVersion.new(this.state.hardForkUpdateMajor, this.state.hardForkUpdateMinor);
             // Create HF Initiation Action
@@ -1247,9 +1323,8 @@ class App extends React.Component {
             // Create voting proposal
             const votingProposal = VotingProposal.new(hardForkInitiationGovAct, anchor, rewardAddr, BigNum.from_str(this.state.govActDeposit))
             // Create gov action builder and set it in state
-            const govActionBuilder = VotingProposalBuilder.new()
             govActionBuilder.add(votingProposal)
-            this.setState({govActionBuilder});
+            await this.setGovActionBuilder(govActionBuilder)
             return true;
         } catch (err) {
             console.log(err);
@@ -1307,7 +1382,6 @@ class App extends React.Component {
                 <ul>{this.state.enabledExtensions && this.state.enabledExtensions.length > 0 ? this.state.enabledExtensions.map((item, index) => ( <li style={{ fontSize: "12px" }} key={index}>{item.cip}</li>)) : <li>No extensions enabled.</li>}</ul>
                 <hr style={{marginTop: "40px", marginBottom: "10px"}}/>
                 <h1>CIP-95 🤠</h1>
-                <button style={{padding: "20px"}} onClick={this.refreshData}>Refresh</button> 
                 <p><span style={{fontWeight: "bold"}}>.cip95.getPubDRepKey(): </span>{this.state.dRepKey}</p>
                 <p><span style={{fontWeight: "lighter"}}>Hex DRep ID (Pub DRep Key hash): </span>{this.state.dRepID}</p>
                 <p><span style={{fontWeight: "lighter"}}>Bech32 DRep ID (Pub DRep Key hash): </span>{this.state.dRepIDBech32}</p>
@@ -1317,7 +1391,36 @@ class App extends React.Component {
                 <p><span style={{ fontWeight: "bold" }}>.cip95.getUnregisteredPubStakeKeys():</span></p>
                 <ul>{this.state.regStakeKeys && this.state.unregStakeKeys.length > 0 ? this.state.unregStakeKeys.map((item, index) => ( <li style={{ fontSize: "12px" }} key={index}>{item}</li>)) : <li>No unregistered public stake keys returned.</li>}</ul>
                 <p><span style={{fontWeight: "lighter"}}> First unregistered Stake Key Hash (hex): </span>{this.state.unregStakeKeyHashHex}</p>
-                
+                <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
+
+                <label>
+                <span style={{ paddingRight: "5px", paddingLeft: '20px' }}>Governance Actions?</span>
+                    <input
+                        type="checkbox"
+                        style={{ paddingRight: "10px", paddingLeft: "10px"}}
+                        checked={this.state.seeGovActs}
+                        onChange={() => this.setState({ seeGovActs: !this.state.seeGovActs })}
+                    />
+                </label>
+                <label>
+                <span style={{ paddingRight: "5px", paddingLeft: '20px' }}>Combination Certificates?</span>
+                    <input
+                        type="checkbox"
+                        style={{ paddingRight: "10px", paddingLeft: "10px"}}
+                        checked={this.state.seeCombos}
+                        onChange={() => this.setState({ seeCombos: !this.state.seeCombos })}
+                    />
+                </label>   
+                <label>
+                    <span style={{ paddingRight: "5px", paddingLeft: '20px' }}>Miscellaneous?</span>
+                    <input
+                        type="checkbox"
+                        style={{ paddingRight: "10px", paddingLeft: "10px"}}
+                        checked={this.state.seeMisc}
+                        onChange={() => this.setState({ seeMisc: !this.state.seeMisc })}
+                    />
+                </label>                   
+
                 <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
                 <p><span style={{fontWeight: "bold"}}>Use CIP-95 .signTx(): </span></p>
                 <p><span style={{fontWeight: "lighter"}}> Basic Governance Functions</span></p>
@@ -1348,7 +1451,7 @@ class App extends React.Component {
                                 />
                             </FormGroup>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildVoteDelegationCert())}>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildVoteDelegationCert()}>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
                     <Tab id="2" title="👷‍♂️ DRep Registration" panel={
@@ -1400,7 +1503,7 @@ class App extends React.Component {
                                 />
                             </FormGroup>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildDRepRegCert())}>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildDRepRegCert()}>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
                     <Tab id="3" title="💫 DRep Update" panel={
@@ -1427,7 +1530,7 @@ class App extends React.Component {
                                 />
                             </FormGroup>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildDRepUpdateCert())}>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildDRepUpdateCert()}>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
 
@@ -1445,7 +1548,7 @@ class App extends React.Component {
                                 />
                             </FormGroup>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildDRepRetirementCert())}>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildDRepRetirementCert()}>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
                     <Tab id="5" title="🗳 Vote" panel={
@@ -1505,618 +1608,624 @@ class App extends React.Component {
                                     onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
                                 />
                             </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildVote())}>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildVote()}>Build, .signTx() and .submitTx()</button>
                         </div>
                     } />
                     <Tabs.Expander />
                 </Tabs>
 
-                {this.state.cip95ResultTx !== '' && this.state.cip95ResultHash !== '' && (
+                {this.state.seeGovActs && (
                 <>
-                    <hr style={{marginTop: "2px", marginBottom: "10px"}}/>
-                    <h5>🚀 Transaction built, sign and submitted successfully 🚀</h5>
-                    <p><span style={{fontWeight: "bold"}}>Tx Hash: </span>{this.state.cip95ResultHash}</p>
-                    <p><span style={{fontWeight: "bold"}}>CborHex Tx: </span>{this.state.cip95ResultTx}</p>
-                </>
+                    <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
+                    <p><span style={{fontWeight: "lighter"}}> Governance Actions</span></p>
+
+                    <FormGroup
+                        helperText="This should align with current protocol parameters (in lovelace)"
+                        label="Governance Action Deposit Amount"
+                        >
+                        <InputGroup
+                            disabled={false}
+                            leftIcon="id-number"
+                            onChange={(event) => this.setState({govActDeposit : event.target.value})}
+                            value={this.state.govActDeposit}
+                        />
+                    </FormGroup>
+
+                    <Tabs id="cip95-actions" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95ActionsTabId}>
+                        <Tab id="1" title="💡 Governance Action: Motion of no-confidence" panel={
+                            <div style={{marginLeft: "20px"}}>
+
+                                <FormGroup
+                                    label="Metadata URL"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                        defaultValue={this.state.cip95MetadataURL}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    helperText=""
+                                    label="Metadata Hash"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                    />
+                                </FormGroup>
+                                <button style={{padding: "10px"}} onClick={ () => this.buildMotionOfNoConfidenceAction() }>Build, .signTx() and .submitTx()</button>
+
+                            </div>
+                        } />
+                        <Tab id="2" title="💡 Governance Action: Update Constitutional Committee" panel={
+                            <div style={{marginLeft: "20px"}}>
+
+                                <FormGroup
+                                    helperText="(Bech32 or Hex encoded)"
+                                    label="Optional: Committee Cold Credential to add"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({committeeAdd: event.target.value})}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    label="Optional: Committee Cold Credential expiry epoch"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({committeeExpiry: event.target.value})}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    helperText="(Bech32 or Hex encoded)"
+                                    label="Optional: Committee Cold Credential to remove"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({committeeRemove: event.target.value})}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    helperText="1 / input"
+                                    label="Optional: New Quorum Threshold"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({committeeQuorum: event.target.value})}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    label="Metadata URL"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                        defaultValue={this.state.cip95MetadataURL}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    helperText=""
+                                    label="Metadata Hash"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                    />
+                                </FormGroup>
+                                <button style={{padding: "10px"}} onClick={ () => this.buildUpdateCommitteeGovAct() }>Build, .signTx() and .submitTx()</button>
+
+                            </div>
+                        } />
+                        <Tab id="3" title="💡 Governance Action: Update Constitution" panel={
+                            <div style={{marginLeft: "20px"}}>
+
+                                <FormGroup
+                                    label="New Constitution URL"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({constURL: event.target.value})}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    label="New Constituion Hash"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({constHash: event.target.value})}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    label="Metadata URL"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                        defaultValue={this.state.cip95MetadataURL}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    helperText=""
+                                    label="Metadata Hash"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                    />
+                                </FormGroup>
+                                <button style={{padding: "10px"}} onClick={ () => this.buildNewConstGovAct() }>Build, .signTx() and .submitTx()</button>
+
+                            </div>
+                        } />
+                        <Tab id="4" title="💡 Governance Action: Hard-Fork Initation" panel={
+                            <div style={{marginLeft: "20px"}}>
+
+                                <FormGroup
+                                    helperText=""
+                                    label="Update Major Version"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({hardForkUpdateMajor: event.target.value})}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    helperText=""
+                                    label="Update Minor Version"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({hardForkUpdateMinor: event.target.value})}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    label="Metadata URL"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                        defaultValue={this.state.cip95MetadataURL}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    helperText=""
+                                    label="Metadata Hash"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                    />
+                                </FormGroup>
+                                <button style={{padding: "10px"}} onClick={ () => this.buildHardForkAction() }>Build, .signTx() and .submitTx()</button>
+
+                            </div>
+                        } />
+                        <Tab id="5" title="[WIP] 💡 Governance Action: Protocol Parameter Update" panel={
+                            <div style={{marginLeft: "20px"}}>
+
+                                <FormGroup
+                                    label="Metadata URL"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                        defaultValue={this.state.cip95MetadataURL}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    helperText=""
+                                    label="Metadata Hash"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                    />
+                                </FormGroup>
+                                <button style={{padding: "10px"}} onClick={ () => this.buildProtocolParamAction() }>Build, .signTx() and .submitTx()</button>
+
+                            </div>
+                        } />
+                        <Tab id="6" title="💡 Governance Action: Treasury Withdrawal" panel={
+                            <div style={{marginLeft: "20px"}}>
+
+                                <FormGroup
+                                    label="Treasury Withdrawal Target Rewards Address"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({treasuryTarget: event.target.value})}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    label="Treasury Withdrawal Amount"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({treasuryAmount: event.target.value})}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    label="Metadata URL"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                        defaultValue={this.state.cip95MetadataURL}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    helperText=""
+                                    label="Metadata Hash"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                    />
+                                </FormGroup>
+                                <button style={{padding: "10px"}} onClick={ () => this.buildTreasuryGovAct() }>Build, .signTx() and .submitTx()</button>
+
+                            </div>
+                        } />
+                        <Tab id="7" title="💡 Governance Action: Info action" panel={
+                            <div style={{marginLeft: "20px"}}>
+
+                                <FormGroup
+                                    label="Metadata URL"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                        defaultValue={this.state.cip95MetadataURL}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    helperText=""
+                                    label="Metadata Hash"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                    />
+                                </FormGroup>
+                                <button style={{padding: "10px"}} onClick={ () => this.buildNewInfoGovAct() }>Build, .signTx() and .submitTx()</button>
+
+                            </div>
+                        } />
+
+                        <Tabs.Expander />
+                    </Tabs>
+                    </>
                 )}
 
-                <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
+                {this.state.seeCombos && (
+                <>
+                    <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
+                    <p><span style={{fontWeight: "lighter"}}> Combination Certificates</span></p>
 
-                <p><span style={{fontWeight: "bold"}}>Use CIP-95 .signTx(): </span></p>
-                <p><span style={{fontWeight: "lighter"}}> Governance Actions</span></p>
+                    <Tabs id="cip95-combo" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95MiscTabId}>
+                        <Tab id="1" title="Stake Delegation and Vote Delegation Certificate" panel={
+                            <div style={{marginLeft: "20px"}}>
+                                <FormGroup
+                                    label="Target of Pool (keyhash):"
+                                    helperText="(Bech32 or Hex encoded)"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({comboPoolHash: event.target.value})}
+                                        value={this.state.comboPoolHash}
+                                    />
+                                </FormGroup>
+                                <FormGroup
+                                    label="Target of Vote Delegation:"
+                                    helperText="DRep ID | abstain | no confidence"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({comboVoteDelegTarget: event.target.value})}
+                                        value={this.state.comboVoteDelegTarget}
+                                    />
+                                </FormGroup>
+                                <FormGroup
+                                    label="Stake Credential:"
+                                    helperText="(Bech32 or Hex encoded)"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({comboStakeCred: event.target.value})}
+                                        value={this.state.comboStakeCred}
+                                    />
+                                </FormGroup>
 
-                <FormGroup
-                    helperText="This should align with current protocol parameters (in lovelace)"
-                    label="Governance Action Deposit Amount"
-                    >
-                    <InputGroup
-                        disabled={false}
-                        leftIcon="id-number"
-                        onChange={(event) => this.setState({govActDeposit : event.target.value})}
-                        value={this.state.govActDeposit}
-                    />
-                </FormGroup>
+                                <button style={{padding: "10px"}} onClick={ () => this.addStakeVoteDelegCert() }>Build, .signTx() and .submitTx()</button>
+                            </div>
+                        } />
+                        <Tab id="2" title="Stake Registration and Stake Pool Delegation Certificate" panel={
+                            <div style={{marginLeft: "20px"}}>
+                                <FormGroup
+                                    label="Target of Pool (keyhash):"
+                                    helperText="(Bech32 or Hex encoded)"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({comboPoolHash: event.target.value})}
+                                        value={this.state.comboPoolHash}
+                                    />
+                                </FormGroup>
+                                <FormGroup
+                                    label="Stake Credential:"
+                                    helperText="(Bech32 or Hex encoded)"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({voteDelegationStakeCred: event.target.value})}
+                                        value={this.state.voteDelegationStakeCred}
+                                    />
+                                </FormGroup>
 
-                <Tabs id="cip95-actions" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95ActionsTabId}>
-                    <Tab id="1" title="💡 Governance Action: Motion of no-confidence" panel={
-                        <div style={{marginLeft: "20px"}}>
+                                <FormGroup
+                                    helperText="This should align with current protocol parameters (in lovelace)"
+                                    label="Stake Key Deposit Amount"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({comboStakeRegCoin : event.target.value})}
+                                        value={this.state.comboStakeRegCoin}
+                                    />
+                                </FormGroup>
+                                
+                                <button style={{padding: "10px"}} onClick={ () => this.addStakeRegDelegCert() }>Build, .signTx() and .submitTx()</button>
+                            </div>
+                        } />
+                        <Tab id="3" title="Stake Registration and Vote Delegation Certificate" panel={
+                            <div style={{marginLeft: "20px"}}>
+                                <FormGroup
+                                    label="Target of Vote Delegation:"
+                                    helperText="DRep ID | abstain | no confidence"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({comboVoteDelegTarget: event.target.value})}
+                                        value={this.state.comboVoteDelegTarget}
+                                    />
+                                </FormGroup>
+                                <FormGroup
+                                    label="Stake Credential:"
+                                    helperText="(Bech32 or Hex encoded)"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({voteDelegationStakeCred: event.target.value})}
+                                        value={this.state.voteDelegationStakeCred}
+                                    />
+                                </FormGroup>
 
-                            <FormGroup
-                                label="Metadata URL"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
-                                    defaultValue={this.state.cip95MetadataURL}
-                                />
-                            </FormGroup>
+                                <FormGroup
+                                    helperText="This should align with current protocol parameters (in lovelace)"
+                                    label="Stake Key Deposit Amount"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({comboStakeRegCoin : event.target.value})}
+                                        value={this.state.comboStakeRegCoin}
+                                    />
+                                </FormGroup>
+                                
+                                <button style={{padding: "10px"}} onClick={ () => this.addStakeRegVoteDelegCert() }>Build, .signTx() and .submitTx()</button>
+                            </div>
+                        } />
+                        <Tab id="4" title="Stake Registration, Stake Pool Delegation and Vote Delegation Certificate" panel={
+                            <div style={{marginLeft: "20px"}}>
+                                <FormGroup
+                                    label="Target of Pool (keyhash):"
+                                    helperText="(Bech32 or Hex encoded)"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({comboPoolHash: event.target.value})}
+                                        value={this.state.comboPoolHash}
+                                    />
+                                </FormGroup>
+                                <FormGroup
+                                    label="Target of Vote Delegation:"
+                                    helperText="DRep ID | abstain | no confidence"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({comboVoteDelegTarget: event.target.value})}
+                                        value={this.state.comboVoteDelegTarget}
+                                    />
+                                </FormGroup>
+                                <FormGroup
+                                    label="Stake Credential:"
+                                    helperText="(Bech32 or Hex encoded)"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({comboVoteDelegTarget: event.target.value})}
+                                        value={this.state.comboVoteDelegTarget}
+                                    />
+                                </FormGroup>
 
-                            <FormGroup
-                                helperText=""
-                                label="Metadata Hash"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
-                                />
-                            </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildMotionOfNoConfidenceAction()) }>Build, .signTx() and .submitTx()</button>
+                                <FormGroup
+                                    helperText="This should align with current protocol parameters (in lovelace)"
+                                    label="Stake Key Deposit Amount"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({comboStakeRegCoin : event.target.value})}
+                                        value={this.state.comboStakeRegCoin}
+                                    />
+                                </FormGroup>
+                                
+                                <button style={{padding: "10px"}} onClick={ () => this.addStakeRegStakeVoteDelegCert() }>Build, .signTx() and .submitTx()</button>
+                            </div>
+                        } />
 
-                        </div>
-                    } />
-                    <Tab id="2" title="💡 Governance Action: Update Constitutional Committee" panel={
-                        <div style={{marginLeft: "20px"}}>
-
-                            <FormGroup
-                                helperText="(Bech32 or Hex encoded)"
-                                label="Optional: Committee Cold Credential to add"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({committeeAdd: event.target.value})}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                label="Optional: Committee Cold Credential expiry epoch"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({committeeExpiry: event.target.value})}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                helperText="(Bech32 or Hex encoded)"
-                                label="Optional: Committee Cold Credential to remove"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({committeeRemove: event.target.value})}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                helperText="1 / input"
-                                label="Optional: New Quorum Threshold"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({committeeQuorum: event.target.value})}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                label="Metadata URL"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
-                                    defaultValue={this.state.cip95MetadataURL}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                helperText=""
-                                label="Metadata Hash"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
-                                />
-                            </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildUpdateCommitteeGovAct()) }>Build, .signTx() and .submitTx()</button>
-
-                        </div>
-                    } />
-                    <Tab id="3" title="💡 Governance Action: Update Constitution" panel={
-                        <div style={{marginLeft: "20px"}}>
-
-                            <FormGroup
-                                label="New Constitution URL"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({constURL: event.target.value})}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                label="New Constituion Hash"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({constHash: event.target.value})}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                label="Metadata URL"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
-                                    defaultValue={this.state.cip95MetadataURL}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                helperText=""
-                                label="Metadata Hash"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
-                                />
-                            </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildNewConstGovAct()) }>Build, .signTx() and .submitTx()</button>
-
-                        </div>
-                    } />
-                    <Tab id="4" title="💡 Governance Action: Hard-Fork Initation" panel={
-                        <div style={{marginLeft: "20px"}}>
-
-                            <FormGroup
-                                helperText=""
-                                label="Update Major Version"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({hardForkUpdateMajor: event.target.value})}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                helperText=""
-                                label="Update Minor Version"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({hardForkUpdateMinor: event.target.value})}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                label="Metadata URL"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
-                                    defaultValue={this.state.cip95MetadataURL}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                helperText=""
-                                label="Metadata Hash"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
-                                />
-                            </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildHardForkAction()) }>Build, .signTx() and .submitTx()</button>
-
-                        </div>
-                    } />
-                    <Tab id="5" title="[WIP] 💡 Governance Action: Protocol Parameter Update" panel={
-                        <div style={{marginLeft: "20px"}}>
-
-                            <FormGroup
-                                label="Metadata URL"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
-                                    defaultValue={this.state.cip95MetadataURL}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                helperText=""
-                                label="Metadata Hash"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
-                                />
-                            </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildProtocolParamAction()) }>Build, .signTx() and .submitTx()</button>
-
-                        </div>
-                    } />
-                    <Tab id="6" title="💡 Governance Action: Treasury Withdrawal" panel={
-                        <div style={{marginLeft: "20px"}}>
-
-                            <FormGroup
-                                label="Treasury Withdrawal Target Rewards Address"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({treasuryTarget: event.target.value})}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                label="Treasury Withdrawal Amount"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({treasuryAmount: event.target.value})}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                label="Metadata URL"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
-                                    defaultValue={this.state.cip95MetadataURL}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                helperText=""
-                                label="Metadata Hash"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
-                                />
-                            </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildTreasuryGovAct()) }>Build, .signTx() and .submitTx()</button>
-
-                        </div>
-                    } />
-                    <Tab id="7" title="💡 Governance Action: Info action" panel={
-                        <div style={{marginLeft: "20px"}}>
-
-                            <FormGroup
-                                label="Metadata URL"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
-                                    defaultValue={this.state.cip95MetadataURL}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                helperText=""
-                                label="Metadata Hash"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
-                                />
-                            </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.buildNewInfoGovAct()) }>Build, .signTx() and .submitTx()</button>
-
-                        </div>
-                    } />
-
-                    <Tabs.Expander />
-                </Tabs>
-                <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
-
-                <p><span style={{fontWeight: "bold"}}>Use CIP-95 .signTx(): </span></p>
-                <p><span style={{fontWeight: "lighter"}}> Combination Certificates</span></p>
-
-                <Tabs id="cip95-combo" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95MiscTabId}>
-                    <Tab id="1" title="Stake Delegation and Vote Delegation Certificate" panel={
-                        <div style={{marginLeft: "20px"}}>
-                            <FormGroup
-                                label="Target of Pool (keyhash):"
-                                helperText="(Bech32 or Hex encoded)"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({comboPoolHash: event.target.value})}
-                                    value={this.state.comboPoolHash}
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                label="Target of Vote Delegation:"
-                                helperText="DRep ID | abstain | no confidence"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({comboVoteDelegTarget: event.target.value})}
-                                    value={this.state.comboVoteDelegTarget}
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                label="Stake Credential:"
-                                helperText="(Bech32 or Hex encoded)"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({comboStakeCred: event.target.value})}
-                                    value={this.state.comboStakeCred}
-                                />
-                            </FormGroup>
-
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.addStakeVoteDelegCert()) }>Build, .signTx() and .submitTx()</button>
-                        </div>
-                    } />
-                    <Tab id="2" title="Stake Registration and Stake Pool Delegation Certificate" panel={
-                        <div style={{marginLeft: "20px"}}>
-                            <FormGroup
-                                label="Target of Pool (keyhash):"
-                                helperText="(Bech32 or Hex encoded)"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({comboPoolHash: event.target.value})}
-                                    value={this.state.comboPoolHash}
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                label="Stake Credential:"
-                                helperText="(Bech32 or Hex encoded)"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({voteDelegationStakeCred: event.target.value})}
-                                    value={this.state.voteDelegationStakeCred}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                helperText="This should align with current protocol parameters (in lovelace)"
-                                label="Stake Key Deposit Amount"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({comboStakeRegCoin : event.target.value})}
-                                    value={this.state.comboStakeRegCoin}
-                                />
-                            </FormGroup>
-                            
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.addStakeRegDelegCert()) }>Build, .signTx() and .submitTx()</button>
-                        </div>
-                    } />
-                    <Tab id="3" title="Stake Registration and Vote Delegation Certificate" panel={
-                        <div style={{marginLeft: "20px"}}>
-                            <FormGroup
-                                label="Target of Vote Delegation:"
-                                helperText="DRep ID | abstain | no confidence"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({comboVoteDelegTarget: event.target.value})}
-                                    value={this.state.comboVoteDelegTarget}
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                label="Stake Credential:"
-                                helperText="(Bech32 or Hex encoded)"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({voteDelegationStakeCred: event.target.value})}
-                                    value={this.state.voteDelegationStakeCred}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                helperText="This should align with current protocol parameters (in lovelace)"
-                                label="Stake Key Deposit Amount"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({comboStakeRegCoin : event.target.value})}
-                                    value={this.state.comboStakeRegCoin}
-                                />
-                            </FormGroup>
-                            
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.addStakeRegVoteDelegCert()) }>Build, .signTx() and .submitTx()</button>
-                        </div>
-                    } />
-                    <Tab id="4" title="Stake Registration,  Vote Delegation Certificate" panel={
-                        <div style={{marginLeft: "20px"}}>
-                            <FormGroup
-                                label="Target of Pool (keyhash):"
-                                helperText="(Bech32 or Hex encoded)"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({comboPoolHash: event.target.value})}
-                                    value={this.state.comboPoolHash}
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                label="Target of Vote Delegation:"
-                                helperText="DRep ID | abstain | no confidence"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({comboVoteDelegTarget: event.target.value})}
-                                    value={this.state.comboVoteDelegTarget}
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                label="Stake Credential:"
-                                helperText="(Bech32 or Hex encoded)"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({comboVoteDelegTarget: event.target.value})}
-                                    value={this.state.comboVoteDelegTarget}
-                                />
-                            </FormGroup>
-
-                            <FormGroup
-                                helperText="This should align with current protocol parameters (in lovelace)"
-                                label="Stake Key Deposit Amount"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({comboStakeRegCoin : event.target.value})}
-                                    value={this.state.comboStakeRegCoin}
-                                />
-                            </FormGroup>
-                            
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.addStakeRegStakeVoteDelegCert()) }>Build, .signTx() and .submitTx()</button>
-                        </div>
-                    } />
-
-                    <Tabs.Expander />
-                </Tabs>
-
-                <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
-                <p><span style={{fontWeight: "bold"}}>Use CIP-95 .signTx(): </span></p>
-                <p><span style={{fontWeight: "lighter"}}> Random Stuff</span></p>
+                        <Tabs.Expander />
+                    </Tabs>
+                    </>
+                )}
                 
-                <Tabs id="cip95-misc" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95MiscTabId}>
-                    <Tab id="1" title="🔑 Register Stake Key" panel={
-                        <div style={{marginLeft: "20px"}}>
+                {this.state.seeMisc && (
+                <>
+                    <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
+                    <p><span style={{fontWeight: "lighter"}}> Random Stuff</span></p>
 
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    style={{ paddingRight: "10px" }}
-                                    checked={this.state.stakeKeyWithCoin}
-                                    onChange={() => this.setState({ stakeKeyWithCoin: !this.state.stakeKeyWithCoin })}
-                                />
-                                <span style={{ paddingLeft: '10px' }}>Use the new Conway Stake Registration Certificate (with coin)</span>
-                            </label>
+                    <Tabs id="cip95-misc" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95MiscTabId}>
+                        <Tab id="1" title="🔑 Register Stake Key" panel={
+                            <div style={{marginLeft: "20px"}}>
 
-                            <FormGroup
-                                label="Stake Key Hash"
-                                style={{ paddingTop: "10px" }}
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({stakeKeyReg : event.target.value})}
-                                    value={this.state.stakeKeyReg}
-                                />
-                            </FormGroup>
-                            <FormGroup
-                                helperText="This should align with current protocol parameters (in lovelace)"
-                                label="Stake Key Deposit Amount"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({stakeKeyCoin : event.target.value})}
-                                    value={this.state.stakeKeyCoin}
-                                />
-                            </FormGroup>
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        style={{ paddingRight: "10px" }}
+                                        checked={this.state.stakeKeyWithCoin}
+                                        onChange={() => this.setState({ stakeKeyWithCoin: !this.state.stakeKeyWithCoin })}
+                                    />
+                                    <span style={{ paddingLeft: '10px' }}>Use the new Conway Stake Registration Certificate (with coin)</span>
+                                </label>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.addStakeKeyRegCert()) }>Build, .signTx() and .submitTx()</button>
+                                <FormGroup
+                                    label="Stake Key Hash"
+                                    style={{ paddingTop: "10px" }}
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({stakeKeyReg : event.target.value})}
+                                        value={this.state.stakeKeyReg}
+                                    />
+                                </FormGroup>
+                                <FormGroup
+                                    helperText="This should align with current protocol parameters (in lovelace)"
+                                    label="Stake Key Deposit Amount"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({stakeKeyCoin : event.target.value})}
+                                        value={this.state.stakeKeyCoin}
+                                    />
+                                </FormGroup>
 
-                        </div>
-                    } />
-                    <Tab id="2" title="🚫🔑 Unregister Stake Key" panel={
-                        <div style={{marginLeft: "20px"}}>
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    style={{ paddingRight: "10px" }}
-                                    checked={this.state.stakeKeyWithCoin}
-                                    onChange={() => this.setState({ stakeKeyWithCoin: !this.state.stakeKeyWithCoin })}
-                                />
-                                 <span style={{ paddingLeft: '10px' }}>Use the new Conway Stake Unregisteration Certificate (with coin)</span>
-                            </label>
+                                <button style={{padding: "10px"}} onClick={ () => this.addStakeKeyRegCert() }>Build cert, add to Tx</button>
 
-                            <FormGroup
-                                helperText=""
-                                label="Stake Key Hash"
-                                style={{ paddingTop: "10px" }}
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({stakeKeyUnreg : event.target.value})}
-                                    value={this.state.stakeKeyUnreg}
-                                />
-                            </FormGroup>
-                            
-                            <FormGroup
-                                helperText="This should align with how much was paid during registration (in lovelace)"
-                                label="Stake Key Deposit Refund Amount"
-                            >
-                                <InputGroup
-                                    disabled={false}
-                                    leftIcon="id-number"
-                                    onChange={(event) => this.setState({stakeKeyCoin : event.target.value})}
-                                    value={this.state.stakeKeyCoin}
-                                />
-                            </FormGroup>
+                            </div>
+                        } />
+                        <Tab id="2" title="🚫🔑 Unregister Stake Key" panel={
+                            <div style={{marginLeft: "20px"}}>
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        style={{ paddingRight: "10px" }}
+                                        checked={this.state.stakeKeyWithCoin}
+                                        onChange={() => this.setState({ stakeKeyWithCoin: !this.state.stakeKeyWithCoin })}
+                                    />
+                                    <span style={{ paddingLeft: '10px' }}>Use the new Conway Stake Unregisteration Certificate (with coin)</span>
+                                </label>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(this.addStakeKeyUnregCert()) }>Build, .signTx() and .submitTx()</button>
-                        </div>
-                    } />
-                    <Tab id="3" title=" 💯 Test Basic Transaction" panel={
-                        <div style={{marginLeft: "20px"}}>
+                                <FormGroup
+                                    helperText=""
+                                    label="Stake Key Hash"
+                                    style={{ paddingTop: "10px" }}
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({stakeKeyUnreg : event.target.value})}
+                                        value={this.state.stakeKeyUnreg}
+                                    />
+                                </FormGroup>
+                                
+                                <FormGroup
+                                    helperText="This should align with how much was paid during registration (in lovelace)"
+                                    label="Stake Key Deposit Refund Amount"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({stakeKeyCoin : event.target.value})}
+                                        value={this.state.stakeKeyCoin}
+                                    />
+                                </FormGroup>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(true) }>Build, .signTx() and .submitTx()</button>
+                                <button style={{padding: "10px"}} onClick={ () => this.addStakeKeyUnregCert() }>Build cert, add to Tx</button>
+                            </div>
+                        } />
+                        <Tab id="3" title=" 💯 Test Basic Transaction" panel={
+                            <div style={{marginLeft: "20px"}}>
 
-                        </div>
-                    } />
-                    <Tabs.Expander />
-                </Tabs>
-                <hr style={{marginTop: "2px", marginBottom: "10px"}}/>
+                                <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(true) }>Build, .signTx() and .submitTx()</button>
+
+                            </div>
+                        } />
+                        <Tabs.Expander />
+                    </Tabs>
+                    </>
+                )}
+                <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
+                <p><span style={{fontWeight: "bold"}}>Contents of transaction: </span></p>
+                <ul>{this.state.govActsInTx.concat(this.state.certsInTx.concat(this.state.votesInTx)).length > 0 ? this.state.govActsInTx.concat(this.state.certsInTx.concat(this.state.votesInTx)).map((item, index) => ( <li style={{ fontSize: "12px" }} key={index}>{item}</li>)) : <li>No certificates, votes or gov actions in transaction.</li>}</ul>
+
+                <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(true) }>.signTx() and .submitTx()</button>
+                <button style={{padding: "10px"}} onClick={this.refreshData}>Refresh</button> 
+
+                <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
                 {this.state.cip95ResultTx !== '' && this.state.cip95ResultHash !== '' && (
                 <>
                     <h5>🚀 Transaction built, sign and submitted successfully 🚀</h5>
