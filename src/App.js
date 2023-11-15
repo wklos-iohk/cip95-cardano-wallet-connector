@@ -2095,8 +2095,8 @@ class App extends React.Component {
                                     <InputGroup
                                         disabled={false}
                                         leftIcon="id-number"
-                                        onChange={(event) => this.setState({comboVoteDelegTarget: event.target.value})}
-                                        value={this.state.comboVoteDelegTarget}
+                                        onChange={(event) => this.setState({voteDelegationStakeCred: event.target.value})}
+                                        value={this.state.voteDelegationStakeCred}
                                     />
                                 </FormGroup>
 
