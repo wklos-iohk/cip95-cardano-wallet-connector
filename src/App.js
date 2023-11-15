@@ -1451,7 +1451,7 @@ class App extends React.Component {
                                 />
                             </FormGroup>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildVoteDelegationCert()}>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildVoteDelegationCert()}>Build cert, add to Tx</button>
                         </div>
                     } />
                     <Tab id="2" title="👷‍♂️ DRep Registration" panel={
@@ -1503,7 +1503,7 @@ class App extends React.Component {
                                 />
                             </FormGroup>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildDRepRegCert()}>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildDRepRegCert()}>Build cert, add to Tx</button>
                         </div>
                     } />
                     <Tab id="3" title="💫 DRep Update" panel={
@@ -1530,7 +1530,7 @@ class App extends React.Component {
                                 />
                             </FormGroup>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildDRepUpdateCert()}>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildDRepUpdateCert()}>Build cert, add to Tx</button>
                         </div>
                     } />
 
@@ -1548,7 +1548,7 @@ class App extends React.Component {
                                 />
                             </FormGroup>
 
-                            <button style={{padding: "10px"}} onClick={ () => this.buildDRepRetirementCert()}>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildDRepRetirementCert()}>Build cert, add to Tx</button>
                         </div>
                     } />
                     <Tab id="5" title="🗳 Vote" panel={
@@ -1608,7 +1608,7 @@ class App extends React.Component {
                                     onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
                                 />
                             </FormGroup>
-                            <button style={{padding: "10px"}} onClick={ () => this.buildVote()}>Build, .signTx() and .submitTx()</button>
+                            <button style={{padding: "10px"}} onClick={ () => this.buildVote()}>Build cert, add to Tx</button>
                         </div>
                     } />
                     <Tabs.Expander />
@@ -1656,7 +1656,7 @@ class App extends React.Component {
                                         onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
                                     />
                                 </FormGroup>
-                                <button style={{padding: "10px"}} onClick={ () => this.buildMotionOfNoConfidenceAction() }>Build, .signTx() and .submitTx()</button>
+                                <button style={{padding: "10px"}} onClick={ () => this.buildMotionOfNoConfidenceAction() }>Build cert, add to Tx</button>
 
                             </div>
                         } />
@@ -1727,7 +1727,7 @@ class App extends React.Component {
                                         onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
                                     />
                                 </FormGroup>
-                                <button style={{padding: "10px"}} onClick={ () => this.buildUpdateCommitteeGovAct() }>Build, .signTx() and .submitTx()</button>
+                                <button style={{padding: "10px"}} onClick={ () => this.buildUpdateCommitteeGovAct() }>Build cert, add to Tx</button>
 
                             </div>
                         } />
@@ -1775,7 +1775,7 @@ class App extends React.Component {
                                         onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
                                     />
                                 </FormGroup>
-                                <button style={{padding: "10px"}} onClick={ () => this.buildNewConstGovAct() }>Build, .signTx() and .submitTx()</button>
+                                <button style={{padding: "10px"}} onClick={ () => this.buildNewConstGovAct() }>Build cert, add to Tx</button>
 
                             </div>
                         } />
@@ -1825,7 +1825,7 @@ class App extends React.Component {
                                         onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
                                     />
                                 </FormGroup>
-                                <button style={{padding: "10px"}} onClick={ () => this.buildHardForkAction() }>Build, .signTx() and .submitTx()</button>
+                                <button style={{padding: "10px"}} onClick={ () => this.buildHardForkAction() }>Build cert, add to Tx</button>
 
                             </div>
                         } />
@@ -1853,7 +1853,7 @@ class App extends React.Component {
                                         onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
                                     />
                                 </FormGroup>
-                                <button style={{padding: "10px"}} onClick={ () => this.buildProtocolParamAction() }>Build, .signTx() and .submitTx()</button>
+                                <button style={{padding: "10px"}} onClick={ () => this.buildProtocolParamAction() }>Build cert, add to Tx</button>
 
                             </div>
                         } />
@@ -1901,7 +1901,7 @@ class App extends React.Component {
                                         onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
                                     />
                                 </FormGroup>
-                                <button style={{padding: "10px"}} onClick={ () => this.buildTreasuryGovAct() }>Build, .signTx() and .submitTx()</button>
+                                <button style={{padding: "10px"}} onClick={ () => this.buildTreasuryGovAct() }>Build cert, add to Tx</button>
 
                             </div>
                         } />
@@ -1929,7 +1929,7 @@ class App extends React.Component {
                                         onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
                                     />
                                 </FormGroup>
-                                <button style={{padding: "10px"}} onClick={ () => this.buildNewInfoGovAct() }>Build, .signTx() and .submitTx()</button>
+                                <button style={{padding: "10px"}} onClick={ () => this.buildNewInfoGovAct() }>Build cert, add to Tx</button>
 
                             </div>
                         } />
@@ -1981,7 +1981,7 @@ class App extends React.Component {
                                     />
                                 </FormGroup>
 
-                                <button style={{padding: "10px"}} onClick={ () => this.addStakeVoteDelegCert() }>Build, .signTx() and .submitTx()</button>
+                                <button style={{padding: "10px"}} onClick={ () => this.addStakeVoteDelegCert() }>Build cert, add to Tx</button>
                             </div>
                         } />
                         <Tab id="2" title="Stake Registration and Stake Pool Delegation Certificate" panel={
@@ -2021,7 +2021,7 @@ class App extends React.Component {
                                     />
                                 </FormGroup>
                                 
-                                <button style={{padding: "10px"}} onClick={ () => this.addStakeRegDelegCert() }>Build, .signTx() and .submitTx()</button>
+                                <button style={{padding: "10px"}} onClick={ () => this.addStakeRegDelegCert() }>Build cert, add to Tx</button>
                             </div>
                         } />
                         <Tab id="3" title="Stake Registration and Vote Delegation Certificate" panel={
@@ -2061,7 +2061,7 @@ class App extends React.Component {
                                     />
                                 </FormGroup>
                                 
-                                <button style={{padding: "10px"}} onClick={ () => this.addStakeRegVoteDelegCert() }>Build, .signTx() and .submitTx()</button>
+                                <button style={{padding: "10px"}} onClick={ () => this.addStakeRegVoteDelegCert() }>Build cert, add to Tx</button>
                             </div>
                         } />
                         <Tab id="4" title="Stake Registration, Stake Pool Delegation and Vote Delegation Certificate" panel={
@@ -2112,7 +2112,7 @@ class App extends React.Component {
                                     />
                                 </FormGroup>
                                 
-                                <button style={{padding: "10px"}} onClick={ () => this.addStakeRegStakeVoteDelegCert() }>Build, .signTx() and .submitTx()</button>
+                                <button style={{padding: "10px"}} onClick={ () => this.addStakeRegStakeVoteDelegCert() }>Build cert, add to Tx</button>
                             </div>
                         } />
 
@@ -2210,7 +2210,7 @@ class App extends React.Component {
                         <Tab id="3" title=" 💯 Test Basic Transaction" panel={
                             <div style={{marginLeft: "20px"}}>
 
-                                <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(true) }>Build, .signTx() and .submitTx()</button>
+                                <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(true) }>Build cert, add to Tx</button>
 
                             </div>
                         } />
