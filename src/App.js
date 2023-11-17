@@ -60,6 +60,8 @@ import {
     buildStakeRegDelegCert,
     buildStakeRegVoteDelegCert,
     buildStakeRegStakeVoteDelegCert,
+    buildAuthorizeHotCredCert,
+    buildResignColdCredCert,
 } from './utils.js';
 
 let Buffer = require('buffer/').Buffer
@@ -90,7 +92,9 @@ class App extends React.Component {
             enabledExtensions: [],
             selected95BasicTabId: "1",
             selected95ActionsTabId: "1",
+            selected95ComboTabId: "1",
             selected95MiscTabId: "1",
+            selected95CCTabId: "1",
             selectedCIP95: true,
             // Keys
             dRepKey: undefined,
@@ -105,6 +109,7 @@ class App extends React.Component {
             // Txs
             seeCombos: false,
             seeGovActs: false,
+            seeCCCerts: false,
             seeMisc: false,
             certsInTx: [],
             votesInTx: [],
@@ -974,6 +979,49 @@ class App extends React.Component {
         }
     }
 
+    addAuthorizeHotCredCert = async () => {
+        let certBuilder = await this.getCertBuilder();
+        console.log("Adding CC authorize hot credential cert to transaction")
+        const certBuilderWithAuthorizeHotCredCert = buildAuthorizeHotCredCert(
+            certBuilder, 
+            this.state.ccColdCred,
+            this.state.ccHotCred,
+        );
+        if (certBuilderWithAuthorizeHotCredCert){
+            await this.setCertBuilder(certBuilderWithAuthorizeHotCredCert)
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    addResignColdCredCert = async () => {
+        let certBuilder = await this.getCertBuilder();
+        console.log("Adding CC resign cold credential cert to transaction")
+
+        let certBuilderWithResignColdCredCert;
+        
+        if (this.state.cip95MetadataURL && this.state.cip95MetadataHash) {
+            certBuilderWithResignColdCredCert = buildResignColdCredCert(
+            certBuilder, 
+            this.state.ccColdCred,
+            this.state.cip95MetadataURL,
+            this.state.cip95MetadataHash
+            );
+        } else {
+            certBuilderWithResignColdCredCert = buildResignColdCredCert(
+                certBuilder, 
+                this.state.ccColdCred
+            );
+        }
+        if (certBuilderWithResignColdCredCert){
+            await this.setCertBuilder(certBuilderWithResignColdCredCert)
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     buildVoteDelegationCert = async () => {
         let certBuilder = await this.getCertBuilder();
         console.log("Adding vote delegation cert to transaction")
@@ -1412,7 +1460,16 @@ class App extends React.Component {
                         checked={this.state.seeCombos}
                         onChange={() => this.setState({ seeCombos: !this.state.seeCombos })}
                     />
-                </label>   
+                </label>
+                <label>
+                    <span style={{ paddingRight: "5px", paddingLeft: '20px' }}>Constitutional Committee Certs?</span>
+                    <input
+                        type="checkbox"
+                        style={{ paddingRight: "10px", paddingLeft: "10px"}}
+                        checked={this.state.seeCCCerts}
+                        onChange={() => this.setState({ seeCCCerts: !this.state.seeCCCerts })}
+                    />
+                </label>
                 <label>
                     <span style={{ paddingRight: "5px", paddingLeft: '20px' }}>Miscellaneous?</span>
                     <input
@@ -1946,7 +2003,7 @@ class App extends React.Component {
                     <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
                     <p><span style={{fontWeight: "lighter"}}> Combination Certificates</span></p>
 
-                    <Tabs id="cip95-combo" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95MiscTabId}>
+                    <Tabs id="cip95-combo" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95ComboTabId}>
                         <Tab id="1" title="Stake Delegation and Vote Delegation Certificate" panel={
                             <div style={{marginLeft: "20px"}}>
                                 <FormGroup
@@ -2118,6 +2175,87 @@ class App extends React.Component {
                             </div>
                         } />
 
+                        <Tabs.Expander />
+                    </Tabs>
+                    </>
+                )}
+
+                {this.state.seeCCCerts && (
+                <>
+                   <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
+                    <p><span style={{fontWeight: "lighter"}}> Consitutional Commitee Related Certs (wallets SHOULD not be able to witness)</span></p>
+
+                    <Tabs id="cip95-cc" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95CCTabId}>
+                        <Tab id="1" title="🔥 Authorize CC Hot Credential" panel={
+                            <div style={{marginLeft: "20px"}}>
+                                <FormGroup
+                                    label="CC Cold Credential"
+                                    style={{ paddingTop: "10px" }}
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({ccColdCred : event.target.value})}
+                                        value={this.state.ccColdCred}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    label="CC Hot Credential"
+                                    style={{ paddingTop: "10px" }}
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({ccHotCred : event.target.value})}
+                                        value={this.state.ccHotCred}
+                                    />
+                                </FormGroup>
+
+                                <button style={{padding: "10px"}} onClick={ () => this.addAuthorizeHotCredCert() }>Build cert, add to Tx</button>
+
+                            </div>
+                        } />
+                        <Tab id="2" title="🧊 Resign CC Cold Credential" panel={
+                            <div style={{marginLeft: "20px"}}>
+                                <FormGroup
+                                    label="CC Cold Credential"
+                                    style={{ paddingTop: "10px" }}
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({ccColdCred : event.target.value})}
+                                        value={this.state.ccColdCred}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    label="Optional: Metadata URL"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({cip95MetadataURL: event.target.value})}
+                                        defaultValue={this.state.cip95MetadataURL}
+                                    />
+                                </FormGroup>
+
+                                <FormGroup
+                                    helperText=""
+                                    label="Optional: Metadata Hash"
+                                >
+                                    <InputGroup
+                                        disabled={false}
+                                        leftIcon="id-number"
+                                        onChange={(event) => this.setState({cip95MetadataHash: event.target.value})}
+                                    />
+                                </FormGroup>
+
+                                <button style={{padding: "10px"}} onClick={ () => this.addResignColdCredCert() }>Build cert, add to Tx</button>
+
+                            </div>
+                        } />
                         <Tabs.Expander />
                     </Tabs>
                     </>
