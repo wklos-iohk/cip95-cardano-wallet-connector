@@ -789,6 +789,8 @@ class App extends React.Component {
 
             // Ask wallet to to provide signature (witnesses) for the transaction
             let txVkeyWitnesses;
+            // Log the CBOR of tx to console
+            console.log(Buffer.from(tx.to_bytes(), "utf8").toString("hex"));
             txVkeyWitnesses = await this.API.signTx(Buffer.from(tx.to_bytes(), "utf8").toString("hex"), true);
             // Create witness set object using the witnesses provided by the wallet
             txVkeyWitnesses = TransactionWitnessSet.from_bytes(Buffer.from(txVkeyWitnesses, "hex"));
