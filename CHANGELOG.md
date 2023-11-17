@@ -1,5 +1,9 @@
 # Tags
 
+### 1.6.3
+- Fixed combination certs
+- Added CC certs
+
 ### 1.6.2
 - multiple certs in one transaction
 - multiple votes in one transaction
