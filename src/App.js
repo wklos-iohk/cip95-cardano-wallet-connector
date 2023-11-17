@@ -2183,7 +2183,7 @@ class App extends React.Component {
                 {this.state.seeCCCerts && (
                 <>
                    <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
-                    <p><span style={{fontWeight: "lighter"}}> Consitutional Commitee Related Certs (wallets SHOULD not be able to witness)</span></p>
+                    <p><span style={{fontWeight: "lighter"}}> Consitutional Commitee Certs (under CIP95 wallet SHOULD NOT be able to witness these correctly)</span></p>
 
                     <Tabs id="cip95-cc" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95CCTabId}>
                         <Tab id="1" title="🔥 Authorize CC Hot Credential" panel={
