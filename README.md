@@ -4,25 +4,21 @@ Currently corresponding CIP-95 commit: [6153866](https://github.com/cardano-foun
 
 | Tag | CIP-95 Commit | Feature Details | demos Wallet Tag | Deployed Currently? |
 | --- | ------------- | --------------- |----------------- | ------------------- |
-| [1.6.0](https://github.com/Ryun1/cip95-cardano-wallet-connector/releases/tag/1.6.0) | [6153866](https://github.com/cardano-foundation/CIPs/blob/6153866bbafe874e196431f736d6bf6691359988/CIP-0095/README.md) | [Here](./CHANGELOG.md#160) | [1.6.0+](https://github.com/Ryun1/cip95-demos-wallet/tags) | No |
-| [1.6.1](https://github.com/Ryun1/cip95-cardano-wallet-connector/releases/tag/1.6.1) | [6153866](https://github.com/cardano-foundation/CIPs/blob/6153866bbafe874e196431f736d6bf6691359988/CIP-0095/README.md) | [Here](./CHANGELOG.md#161) | [1.6.0+](https://github.com/Ryun1/cip95-demos-wallet/tags) | No |
 | [1.6.2](https://github.com/Ryun1/cip95-cardano-wallet-connector/releases/tag/1.6.2) | [6153866](https://github.com/cardano-foundation/CIPs/blob/6153866bbafe874e196431f736d6bf6691359988/CIP-0095/README.md) | [Here](./CHANGELOG.md#162) | [1.6.0+](https://github.com/Ryun1/cip95-demos-wallet/tags) | No |
 | [1.6.3](https://github.com/Ryun1/cip95-cardano-wallet-connector/releases/tag/1.6.3) | [6153866](https://github.com/cardano-foundation/CIPs/blob/6153866bbafe874e196431f736d6bf6691359988/CIP-0095/README.md) | [Here](./CHANGELOG.md#163) | [1.6.0+](https://github.com/Ryun1/cip95-demos-wallet/tags) | No |
-| [1.6.4](https://github.com/Ryun1/cip95-cardano-wallet-connector/releases/tag/1.6.4) | [6153866](https://github.com/cardano-foundation/CIPs/blob/6153866bbafe874e196431f736d6bf6691359988/CIP-0095/README.md) | [Here](./CHANGELOG.md#164) | [1.6.0+](https://github.com/Ryun1/cip95-demos-wallet/tags) | [Yes](https://ryun1.github.io/cip95-cardano-wallet-connector/) |
+| [1.6.4](https://github.com/Ryun1/cip95-cardano-wallet-connector/releases/tag/1.6.4) | [6153866](https://github.com/cardano-foundation/CIPs/blob/6153866bbafe874e196431f736d6bf6691359988/CIP-0095/README.md) | [Here](./CHANGELOG.md#164) | [1.6.0+](https://github.com/Ryun1/cip95-demos-wallet/tags) | No |
+| [1.7.0](https://github.com/Ryun1/cip95-cardano-wallet-connector/releases/tag/1.7.0) | [6153866](https://github.com/cardano-foundation/CIPs/blob/6153866bbafe874e196431f736d6bf6691359988/CIP-0095/README.md) | [Here](./CHANGELOG.md#170) | [1.7.0+](https://github.com/Ryun1/cip95-demos-wallet/tags) | [Yes](https://ryun1.github.io/cip95-cardano-wallet-connector/) |
 
 ## CIP-95/Conway Features Supported Notes
 
 See [CHANGELOG.md](./CHANGELOG.md) for feature details on older tags.
 
-### 1.6.4
-- Added Treasury donations
-- Added Treasury values
-- Fixed linking previous governance actions
-- Added MIR certificate
-- Added genesis certificate
-  
-### 1.7.0 (In progress)
-- signData
+### 1.7.0
+- bumped to CSL 12 alpha 16
+
+### 1.7.1 (In progress)
+- show errors to users better
+- `.cip95.signData`
 - refactor
 
 ## To Develop

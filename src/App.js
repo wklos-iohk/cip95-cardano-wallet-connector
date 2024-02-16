@@ -179,14 +179,14 @@ class App extends React.Component {
                 minFeeA: "44",
                 minFeeB: "155381",
             },
-            minUtxo: "34482",
+            minUtxo: "1000000",
             poolDeposit: "500000000",
             keyDeposit: "2000000",
             maxValSize: 5000,
             maxTxSize: 16384,
             priceMem: 0.0577,
             priceStep: 0.0000721,
-            coinsPerUtxoWord: "34482",
+            coinsPerUTxOByte: "4310",
         }
         this.pollWallets = this.pollWallets.bind(this);
     }
@@ -564,7 +564,7 @@ class App extends React.Component {
                 .fee_algo(LinearFee.new(BigNum.from_str(this.protocolParams.linearFee.minFeeA), BigNum.from_str(this.protocolParams.linearFee.minFeeB)))
                 .pool_deposit(BigNum.from_str(this.protocolParams.poolDeposit))
                 .key_deposit(BigNum.from_str(this.protocolParams.keyDeposit))
-                .coins_per_utxo_word(BigNum.from_str(this.protocolParams.coinsPerUtxoWord))
+                .coins_per_utxo_byte(BigNum.from_str(this.protocolParams.coinsPerUTxOByte))
                 .max_value_size(this.protocolParams.maxValSize)
                 .max_tx_size(this.protocolParams.maxTxSize)
                 .prefer_pure_change(true)
@@ -855,7 +855,7 @@ class App extends React.Component {
             }
         } catch (err) {
             console.log("Error during build, sign and submit transaction");
-            // console.log(err);
+            console.log(err);
             await this.refreshData();
         }
     }
