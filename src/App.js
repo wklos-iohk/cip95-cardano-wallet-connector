@@ -410,8 +410,8 @@ class App extends React.Component {
     }
 
     checkIfCIP95MethodsAvailable = async () => {
-        const hasCIP95Methods = ( 
-            this.API.cip95.hasOwnProperty('getPubDRepKey') 
+        const hasCIP95Methods = (
+            this.API.cip95.hasOwnProperty('getPubDRepKey')
             && this.API.cip95.hasOwnProperty('getRegisteredPubStakeKeys')
             && this.API.cip95.hasOwnProperty('getUnregisteredPubStakeKeys'));
         return hasCIP95Methods;
@@ -584,7 +584,7 @@ class App extends React.Component {
         );
         return txBuilder
     }
-    
+
     /**
      * Builds an object with all the UTXOs from the user's wallet
      * @returns {Promise<TransactionUnspentOutputs>}
@@ -599,7 +599,7 @@ class App extends React.Component {
 
     getPubDRepKey = async () => {
         try {
-            // From wallet get pub DRep key 
+            // From wallet get pub DRep key
             const dRepKey = await this.API.cip95.getPubDRepKey();
             const dRepID = (PublicKey.from_hex(dRepKey)).hash();
             this.setState({dRepKey});
@@ -626,7 +626,7 @@ class App extends React.Component {
                 // Set array
                 const regStakeKeys = raw;
                 this.setState({regStakeKeys})
-                // Just use the first key for now 
+                // Just use the first key for now
                 const regStakeKey = regStakeKeys[0];
                 this.setState({regStakeKey})
                 // Hash the stake key
@@ -653,7 +653,7 @@ class App extends React.Component {
                 // Set array
                 const unregStakeKeys = raw;
                 this.setState({unregStakeKeys})
-                // Just use the first key for now 
+                // Just use the first key for now
                 const unregStakeKey = unregStakeKeys[0];
                 this.setState({unregStakeKey})
                 // Hash the stake key
@@ -705,7 +705,7 @@ class App extends React.Component {
     }
 
     // ew! who wrote this?
-    resetSomeState = async () => { 
+    resetSomeState = async () => {
         this.setState({cip95ResultTx : ""});
         this.setState({cip95ResultHash : ""});
         this.setState({certsInTx : []});
@@ -716,7 +716,7 @@ class App extends React.Component {
         this.setState({govActionBuilder : undefined});
     }
 
-    refreshErrorState = async () => { 
+    refreshErrorState = async () => {
         this.setState({buildingError : undefined});
         this.setState({signAndSubmitError : undefined});
     }
@@ -810,12 +810,12 @@ class App extends React.Component {
             if (this.state.treasuryValueAmount){
                 txBuilder.set_current_treasury_value(BigNum.from_str(this.state.treasuryValueAmount));
             }
-            
+
             // Set output and change addresses to those of our wallet
             const shelleyOutputAddress = Address.from_bech32(this.state.usedAddress);
             const shelleyChangeAddress = Address.from_bech32(this.state.changeAddress);
-            
-            // Add output of 1 ADA plus total needed for refunds 
+
+            // Add output of 1 ADA plus total needed for refunds
             let outputValue = BigNum.from_str('1000000')
             if (this.state.totalRefunds) {
                 outputValue = outputValue.checked_add(this.state.totalRefunds)
@@ -856,13 +856,13 @@ class App extends React.Component {
                 tx.body(),
                 transactionWitnessSet,
             );
-            
+
             console.log("SignedTx: ", Buffer.from(signedTx.to_bytes(), "utf8").toString("hex"))
             //console.log("Signed Tx: ", signedTx.to_json());
 
             const cip95ResultWitness = Buffer.from(txVkeyWitnesses.to_bytes(), "utf8").toString("hex");
             this.setState({cip95ResultWitness});
-            
+
             this.resetSomeState();
 
             if (await this.submitConwayTx(signedTx)){
@@ -901,12 +901,12 @@ class App extends React.Component {
         let certBuilder = await this.getCertBuilder();
         console.log("Adding stake registration cert to transaction")
         const certBuilderWithStakeReg = buildStakeKeyRegCert(
-            certBuilder, 
+            certBuilder,
             this.state.stakeKeyReg,
             this.state.stakeKeyWithCoin,
             this.state.stakeKeyCoin,
         );
-    
+
         // messy having this here
         if (!this.state.stakeKeyWithCoin){
             this.protocolParams.keyDeposit = this.state.stakeKeyCoin
@@ -920,11 +920,11 @@ class App extends React.Component {
     }
 
     addStakeKeyUnregCert = async () => {
-        this.refreshErrorState();        
+        this.refreshErrorState();
         let certBuilder = await this.getCertBuilder();
         console.log("Adding stake deregistraiton cert to transaction")
         const certBuilderWithStakeUnreg = buildStakeKeyUnregCert(
-            certBuilder, 
+            certBuilder,
             this.state.stakeKeyUnreg,
             this.state.stakeKeyWithCoin,
             this.state.stakeKeyCoin,
@@ -956,7 +956,7 @@ class App extends React.Component {
         let certBuilder = await this.getCertBuilder();
         console.log("Adding vote delegation cert to transaction")
         const certBuilderWithStakeVoteDeleg = buildStakeVoteDelegCert(
-            certBuilder, 
+            certBuilder,
             this.state.comboStakeCred,
             this.state.comboPoolHash,
             this.state.comboVoteDelegTarget,
@@ -974,7 +974,7 @@ class App extends React.Component {
         let certBuilder = await this.getCertBuilder();
         console.log("Adding (stake key reg and stake pool delegation) cert to transaction")
         const certBuilderWithStakeRegDelegCert = buildStakeRegDelegCert(
-            certBuilder, 
+            certBuilder,
             this.state.comboStakeCred,
             this.state.comboPoolHash,
             this.state.comboStakeRegCoin,
@@ -996,7 +996,7 @@ class App extends React.Component {
         let certBuilder = await this.getCertBuilder();
         console.log("Adding (stake key reg and vote delegation) cert to transaction")
         const certBuilderWithStakeRegVoteDelegCert = buildStakeRegVoteDelegCert(
-            certBuilder, 
+            certBuilder,
             this.state.comboStakeCred,
             this.state.comboVoteDelegTarget,
             this.state.comboStakeRegCoin,
@@ -1018,7 +1018,7 @@ class App extends React.Component {
         let certBuilder = await this.getCertBuilder();
         console.log("Adding (stake key reg, stake pool delegation and vote delegation) cert to transaction")
         const certBuilderWithStakeRegStakeVoteDelegCert = buildStakeRegStakeVoteDelegCert(
-            certBuilder, 
+            certBuilder,
             this.state.comboStakeCred,
             this.state.comboPoolHash,
             this.state.comboVoteDelegTarget,
@@ -1041,7 +1041,7 @@ class App extends React.Component {
         let certBuilder = await this.getCertBuilder();
         console.log("Adding CC authorize hot credential cert to transaction")
         const certBuilderWithAuthorizeHotCredCert = buildAuthorizeHotCredCert(
-            certBuilder, 
+            certBuilder,
             this.state.ccColdCred,
             this.state.ccHotCred,
         );
@@ -1059,17 +1059,17 @@ class App extends React.Component {
         console.log("Adding CC resign cold credential cert to transaction")
 
         let certBuilderWithResignColdCredCert;
-        
+
         if (this.state.cip95MetadataURL && this.state.cip95MetadataHash) {
             certBuilderWithResignColdCredCert = buildResignColdCredCert(
-            certBuilder, 
+            certBuilder,
             this.state.ccColdCred,
             this.state.cip95MetadataURL,
             this.state.cip95MetadataHash
             );
         } else {
             certBuilderWithResignColdCredCert = buildResignColdCredCert(
-                certBuilder, 
+                certBuilder,
                 this.state.ccColdCred
             );
         }
@@ -1085,9 +1085,9 @@ class App extends React.Component {
         this.refreshErrorState();
         let certBuilder = await this.getCertBuilder();
         console.log("Adding MIR cert to transaction")
-        
+
         const certBuilderWithMIRCert = buildMIRCert(
-            certBuilder, 
+            certBuilder,
             this.state.mirStakeCred,
             this.state.mirAmount,
             this.state.mirPot
@@ -1105,9 +1105,9 @@ class App extends React.Component {
         this.refreshErrorState();
         let certBuilder = await this.getCertBuilder();
         console.log("Adding genesis delegation to transaction")
-        
+
         const certBuilderWithGenesisDelegationCert = buildGenesisKeyDelegationCert(
-            certBuilder, 
+            certBuilder,
             this.state.genesisHash,
             this.state.genesisDelegationHash,
             this.state.vrfKeyHash
@@ -1410,7 +1410,7 @@ class App extends React.Component {
             if (this.state.committeeQuorum){
                 threshold = UnitInterval.new(BigNum.from_str("1"), BigNum.from_str(this.state.committeeQuorum));
             }
-    
+
             // add new member if provided
             let newCommittee = Committee.new(threshold);
             if (this.state.committeeAdd && this.state.committeeExpiry){
@@ -1587,7 +1587,7 @@ class App extends React.Component {
                 <h1>✨demos CIP-95 dApp✨</h1>
                 <h4>✨v1.8.0✨</h4>
 
-                <input type="checkbox" checked={this.state.selectedCIP95} onChange={this.handleCIP95Select}/> Enable CIP-95?
+                <input type="checkbox" checked={this.state.selectedCIP95} onChange={this.handleCIP95Select} data-testid={"cip95-checkbox"}/> Enable CIP-95?
 
                 <div style={{paddingTop: "10px"}}>
                     <div style={{marginBottom: 15}}>Select wallet:</div>
@@ -1608,7 +1608,7 @@ class App extends React.Component {
                         )}
                     </RadioGroup>
                 </div>
-                <button style={{padding: "20px"}} onClick={this.refreshData}>Refresh</button> 
+                <button style={{padding: "20px"}} onClick={this.refreshData} data-testid={"refresh-button"}>Refresh</button>
                 <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
                 <h3>CIP-30 Initial API</h3>
                 <p><span style={{fontWeight: "bold"}}>Wallet Found: </span>{`${this.state.walletFound}`}</p>
@@ -1625,14 +1625,14 @@ class App extends React.Component {
                 <ul>{this.state.enabledExtensions && this.state.enabledExtensions.length > 0 ? this.state.enabledExtensions.map((item, index) => ( <li style={{ fontSize: "12px" }} key={index}>{item.cip}</li>)) : <li>No extensions enabled.</li>}</ul>
                 <hr style={{marginTop: "40px", marginBottom: "10px"}}/>
                 <h1>CIP-95 🤠</h1>
-                <p><span style={{fontWeight: "bold"}}>.cip95.getPubDRepKey(): </span>{this.state.dRepKey}</p>
-                <p><span style={{fontWeight: "lighter"}}>Hex DRep ID (Pub DRep Key hash): </span>{this.state.dRepID}</p>
-                <p><span style={{fontWeight: "lighter"}}>Bech32 DRep ID (Pub DRep Key hash): </span>{this.state.dRepIDBech32}</p>
+                <p data-testid={"pub-drep-key"}><span style={{fontWeight: "bold"}}>.cip95.getPubDRepKey(): </span>{this.state.dRepKey}</p>
+                <p data-testid={"pub-drep-id-hex"}><span style={{fontWeight: "lighter"}}>Hex DRep ID (Pub DRep Key hash): </span>{this.state.dRepID}</p>
+                <p data-testid={"pub-drep-id-bech32"}><span style={{fontWeight: "lighter"}}>Bech32 DRep ID (Pub DRep Key hash): </span>{this.state.dRepIDBech32}</p>
                 <p><span style={{ fontWeight: "bold" }}>.cip95.getRegisteredPubStakeKeys():</span></p>
-                <ul>{this.state.regStakeKeys && this.state.regStakeKeys.length > 0 ? this.state.regStakeKeys.map((item, index) => ( <li style={{ fontSize: "12px" }} key={index}>{item}</li>)) : <li>No registered public stake keys returned.</li>}</ul>
+                <ul>{this.state.regStakeKeys && this.state.regStakeKeys.length > 0 ? this.state.regStakeKeys.map((item, index) => ( <li style={{ fontSize: "12px" }} key={index} data-testid={`registered-pub-stake-key-${index}`}>{item}</li>)) : <li data-testid={'no-registered-pub-stake-keys'}>No registered public stake keys returned.</li>}</ul>
                 <p><span style={{fontWeight: "lighter"}}> First registered Stake Key Hash (hex): </span>{this.state.regStakeKeyHashHex}</p>
                 <p><span style={{ fontWeight: "bold" }}>.cip95.getUnregisteredPubStakeKeys():</span></p>
-                <ul>{this.state.regStakeKeys && this.state.unregStakeKeys.length > 0 ? this.state.unregStakeKeys.map((item, index) => ( <li style={{ fontSize: "12px" }} key={index}>{item}</li>)) : <li>No unregistered public stake keys returned.</li>}</ul>
+                <ul>{this.state.regStakeKeys && this.state.unregStakeKeys.length > 0 ? this.state.unregStakeKeys.map((item, index) => ( <li style={{ fontSize: "12px" }} key={index} data-testid={`unregistered-pub-stake-key-${index}`}>{item}</li>)) : <li data-testid={'no-unregistered-pub-stake-keys'}>No unregistered public stake keys returned.</li>}</ul>
                 <p><span style={{fontWeight: "lighter"}}> First unregistered Stake Key Hash (hex): </span>{this.state.unregStakeKeyHashHex}</p>
                 <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
 
@@ -1671,7 +1671,7 @@ class App extends React.Component {
                         checked={this.state.seeMisc}
                         onChange={() => this.setState({ seeMisc: !this.state.seeMisc })}
                     />
-                </label>                   
+                </label>
 
                 <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
                 <p><span style={{fontWeight: "bold"}}>Use CIP-95 .signTx(): </span></p>
@@ -1903,7 +1903,7 @@ class App extends React.Component {
                             onChange={(event) => this.setState({gaMetadataHash: event.target.value})}
                             defaultValue={this.state.gaMetadataHash}
                         />
-                    </FormGroup>               
+                    </FormGroup>
 
                     <Tabs id="cip95-actions" vertical={true} onChange={this.handle95TabId} selectedTab95Id={this.state.selected95ActionsTabId}>
                         <Tab id="1" title="💡 Governance Action: Motion of no-confidence" panel={
@@ -1925,7 +1925,7 @@ class App extends React.Component {
                             </div>
                         } />
                         <Tab id="2" title="💡 Governance Action: Update Constitutional Committee" panel={
-                            
+
                             <div style={{marginLeft: "20px"}}>
                                 <h4>For convenience we limit to adding or removing only one credential at a time. </h4>
                                 <FormGroup
@@ -2281,7 +2281,7 @@ class App extends React.Component {
                                         value={this.state.comboStakeRegCoin}
                                     />
                                 </FormGroup>
-                                
+
                                 <button style={{padding: "10px"}} onClick={ () => this.addStakeRegDelegCert() }>Build cert, add to Tx</button>
                             </div>
                         } />
@@ -2321,7 +2321,7 @@ class App extends React.Component {
                                         value={this.state.comboStakeRegCoin}
                                     />
                                 </FormGroup>
-                                
+
                                 <button style={{padding: "10px"}} onClick={ () => this.addStakeRegVoteDelegCert() }>Build cert, add to Tx</button>
                             </div>
                         } />
@@ -2372,7 +2372,7 @@ class App extends React.Component {
                                         value={this.state.comboStakeRegCoin}
                                     />
                                 </FormGroup>
-                                
+
                                 <button style={{padding: "10px"}} onClick={ () => this.addStakeRegStakeVoteDelegCert() }>Build cert, add to Tx</button>
                             </div>
                         } />
@@ -2462,7 +2462,7 @@ class App extends React.Component {
                     </Tabs>
                     </>
                 )}
-                
+
                 {this.state.seeMisc && (
                 <>
                     <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
@@ -2533,7 +2533,7 @@ class App extends React.Component {
                                         value={this.state.stakeKeyUnreg}
                                     />
                                 </FormGroup>
-                                
+
                                 <FormGroup
                                     helperText="This should align with how much was paid during registration (in lovelace)"
                                     label="Stake Key Deposit Refund Amount"
@@ -2731,9 +2731,9 @@ class App extends React.Component {
                     <p><span style={{fontWeight: "lighter"}}> Treasury Value: </span>{this.state.treasuryValueAmount}</p>
                     </>
                 )}
-                
+
                 <button style={{padding: "10px"}} onClick={ () => this.buildSubmitConwayTx(true) }>.signTx() and .submitTx()</button>
-                <button style={{padding: "10px"}} onClick={this.refreshData}>Refresh</button> 
+                <button style={{padding: "10px"}} onClick={this.refreshData}>Refresh</button>
 
                 <hr style={{marginTop: "10px", marginBottom: "10px"}}/>
                 {this.state.cip95ResultTx !== '' && this.state.cip95ResultHash !== '' && (
@@ -2744,7 +2744,7 @@ class App extends React.Component {
                 <p><span style={{fontWeight: "bold"}}>Tx Hash: </span>{this.state.cip95ResultHash}</p>
                 <p><span style={{fontWeight: "bold"}}>CborHex Tx: </span>{this.state.cip95ResultTx}</p>
                 <hr style={{marginTop: "2px", marginBottom: "10px"}}/>
-                
+
                 <h5>💖 Powered by CSL 12 alpha 19 💖</h5>
             </div>
         )

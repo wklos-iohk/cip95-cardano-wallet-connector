@@ -1,5 +1,5 @@
 {
-    "homepage": "http://ryun1.github.io/cip95-cardano-wallet-connector",
+    "homepage": "http://wklos-iohk.github.io/cip95-cardano-wallet-connector",
     "name": "cardano-wallet-connector",
     "version": "1.8.0",
     "private": true,
